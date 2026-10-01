@@ -10,7 +10,7 @@ import Step2 from "../../components/assets/Step2.png";
 import Step3 from "../../components/assets/Step3.png";
 import Step4 from "../../components/assets/Step4.png";
 import Step5 from "../../components/assets/Step5.png";
-import Step6 from "../../components/assets/step6.png";
+import Step6 from "../../components/assets/Step6.png";
 import Step7 from "../../components/assets/Step7.png";
 import {
   ShieldCheck, FolderOpen, CheckSquare, MessageSquare,
