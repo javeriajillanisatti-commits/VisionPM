@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { X, Trash2, Paperclip, Download } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
@@ -24,7 +24,7 @@ const AnnouncementPanel = ({ isModalOpen, setIsModalOpen }) => {
   const getToken = () => sessionStorage.getItem("token") || localStorage.getItem("token");
 
   // Check expandable content
-  const checkTextLength = () => {
+  const checkTextLength = useCallback(() => {
     const titles = {}, messages = {};
 
     announcements.forEach(({ _id }) => {
@@ -44,10 +44,10 @@ const AnnouncementPanel = ({ isModalOpen, setIsModalOpen }) => {
 
     setLongTitles(titles);
     setLongMessages(messages);
-  };
+  }, [announcements]);
 
   // Load workspace announcements
-  const fetchAnnouncements = async () => {
+  const fetchAnnouncements = useCallback(async () => {
     if (!workspaceId) return setAnnouncements([]);
 
     try {
@@ -62,22 +62,23 @@ const AnnouncementPanel = ({ isModalOpen, setIsModalOpen }) => {
     } finally {
       setLoadingAnnouncements(false);
     }
-  };
+  }, [workspaceId]);
 
- useEffect(() => {
-  fetchAnnouncements();
-}, [workspaceId, fetchAnnouncements]);
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [workspaceId, fetchAnnouncements]);
 
   useEffect(() => {
     if (!announcements.length) return;
 
     const timer = setTimeout(checkTextLength, 50);
     window.addEventListener("resize", checkTextLength);
+
     return () => {
       clearTimeout(timer);
       window.removeEventListener("resize", checkTextLength);
     };
-  }, [announcements]);
+  }, [announcements, checkTextLength]);
 
   const handleCreate = async ({ title, message, file }) => {
     if (!workspaceId) return setError("Please select a workspace first.");

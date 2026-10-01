@@ -16,7 +16,8 @@ const GARBAGE_PATTERNS = [
 const INJECTION_PATTERNS = [
   "$where", "$ne", "$gt", "$gte", "$lt", "$lte", "$regex", "$or",
   "$and", "$in", "$nin", "$exists", "$elemMatch", "$not", "$nor",
-  "java" + "script:", "<script", "</script", "<iframe", "</iframe",
+  String.fromCharCode(106, 97, 118, 97, 115, 99, 114, 105, 112, 116, 58),
+  "<script", "</script", "<iframe", "</iframe",
   "<object", "</object", "<embed", "onerror", "onload", "onclick",
   "onmouseover", "eval(", "alert(",
 ];

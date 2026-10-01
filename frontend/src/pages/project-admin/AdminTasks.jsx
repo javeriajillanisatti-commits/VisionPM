@@ -50,7 +50,7 @@ const AdminTasks = () => {
       console.error("Error fetching project:", error.response?.data || error);
       setProject(null);
     }
-  }, [token, projectId]);
+  }, [token, projectId, apiConfig]);
 
   const fetchTasks = useCallback(async () => {
     if (!token) {
@@ -79,7 +79,7 @@ const AdminTasks = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, projectId]);
+  }, [token, projectId, apiConfig]);
 
   useEffect(() => {
     if (!projectId) {
