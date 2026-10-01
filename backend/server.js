@@ -42,7 +42,7 @@ const { startDeadlineReminderJob } = require("./cronJobs/deadlineReminder");
 
 const connectDB = require("./config/db");
 connectDB();
-require("./config/mailer").warmUp();
+//require("./config/mailer").warmUp();
 
 const app = express();
 
