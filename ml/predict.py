@@ -5,7 +5,7 @@ import joblib
 
 app = Flask(__name__)
 
-# Load the trained model once (path is relative to this file, not the working directory)
+# Load the trained model once
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 model = joblib.load(os.path.join(BASE_DIR, "task_delay_model.pkl"))
 
@@ -15,7 +15,6 @@ priority_map = {
     "High": 2,
 }
 
-
 # Prepare features and predict task delay
 def make_prediction(task):
     priority = priority_map.get(task.get("priority", "Medium"), 1)
@@ -24,9 +23,11 @@ def make_prediction(task):
     time_left = float(task.get("time_left", 0))
 
     features = [[priority, workload, progress, time_left]]
+
     prediction = int(model.predict(features)[0])
 
     confidence = None
+
     if hasattr(model, "predict_proba"):
         probabilities = model.predict_proba(features)[0]
         confidence = round(float(max(probabilities)) * 100, 2)
@@ -38,7 +39,7 @@ def make_prediction(task):
     }
 
 
-# Health check (used by hosting platforms)
+# Health check
 @app.route("/", methods=["GET"])
 def health():
     return jsonify({"status": "ok"}), 200
@@ -63,6 +64,7 @@ def predict():
 
     except Exception as error:
         print("Single prediction error:", error)
+
         return jsonify({
             "success": False,
             "message": str(error),
@@ -134,6 +136,7 @@ def predict_batch():
 
     except Exception as error:
         print("Batch prediction error:", error)
+
         return jsonify({
             "success": False,
             "message": str(error),
