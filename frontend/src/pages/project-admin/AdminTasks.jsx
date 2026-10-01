@@ -34,7 +34,10 @@ const AdminTasks = () => {
   const [hasMoreDescription, setHasMoreDescription] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
-  const apiConfig = { headers: { Authorization: `Bearer ${token}` } };
+  const apiConfig = useMemo(
+  () => ({ headers: { Authorization: `Bearer ${token}` } }),
+  [token]
+);
   const perPage = 9;
 
   const fetchProject = useCallback(async () => {
