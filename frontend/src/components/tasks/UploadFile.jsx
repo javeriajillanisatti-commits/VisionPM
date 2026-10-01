@@ -28,7 +28,6 @@ const UploadFile = ({ userRole = "projectmanager" }) => {
   const uploadInputRef = useRef(null);
 
   const cleanRole = userRole.toString().toLowerCase().replace(/\s+/g, "");
-  const isTM = cleanRole === "teammember";
   const isPM = cleanRole === "projectmanager";
   const currentUserId = decodeUserId(sessionStorage.getItem("token"));
 

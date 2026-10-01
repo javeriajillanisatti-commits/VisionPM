@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Clock, X, Plus } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 
 const DEFAULT_START = 7 * 60, DEFAULT_END = 21 * 60, PX_PER_MIN = 50 / 60;

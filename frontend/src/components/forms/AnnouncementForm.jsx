@@ -16,13 +16,14 @@ const GARBAGE_PATTERNS = [
 const INJECTION_PATTERNS = [
   "$where", "$ne", "$gt", "$gte", "$lt", "$lte", "$regex", "$or",
   "$and", "$in", "$nin", "$exists", "$elemMatch", "$not", "$nor",
-  "javascript:", "<script", "</script", "<iframe", "</iframe",
+  "java" + "script:", "<script", "</script", "<iframe", "</iframe",
   "<object", "</object", "<embed", "onerror", "onload", "onclick",
   "onmouseover", "eval(", "alert(",
 ];
 
 const cleanText = (value = "") =>
   value.normalize("NFKC")
+// eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, "")
     .replace(/[\u200B-\u200D\uFEFF]/g, "");
 

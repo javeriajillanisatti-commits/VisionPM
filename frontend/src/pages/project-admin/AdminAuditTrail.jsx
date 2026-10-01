@@ -18,13 +18,13 @@ const ACTION_STYLES = {
   Deleted: ["bg-red-500/10 text-red-400 border-red-500/20", "bg-red-50 text-red-700 border-red-200"],
   Login: ["bg-indigo-500/10 text-indigo-400 border-indigo-500/20", "bg-indigo-50 text-indigo-700 border-indigo-200"],
 };
-const ACTION_ICONS = { Created: Plus, Updated: Pencil, Deleted: Trash2 };
+const ACTION_ICONS = { Created: Plus, Upadated: Pencil, Deleted: Trash2 };
 
 const getWorkspaceId = workspace =>
   typeof workspace === "object" ? workspace?._id || workspace?.id : workspace || null;
 
 const pad2 = n => String(n).padStart(2, "0");
-const ymd = date => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+
 
 const formatDate = date => {
   if (!date) return { date: "-", time: "-" };

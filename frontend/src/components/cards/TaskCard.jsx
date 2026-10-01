@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Trash2, Calendar, ChevronDown,  CheckCircle2 } from "lucide-react";
+import { Trash2, Calendar, ChevronDown, CheckCircle2 } from "lucide-react";
 import { updateTask } from "../../services/taskService";
 
 const STATUS_OPTIONS = [
@@ -52,7 +52,7 @@ const TaskStatusDropdown = ({
   const selectedLabel = STATUS_OPTIONS.find(opt => opt.value === value)?.label || "To Do";
 
   return (
-    <div className={`relative shrink-0 ${widthClass}`} ref={containerRef}>    
+    <div className={`relative shrink-0 ${widthClass}`} ref={containerRef}>
       <button
         type="button"
         onClick={e => {
@@ -104,6 +104,7 @@ const TaskStatusDropdown = ({
     </div>
   );
 };
+
 const TaskCard = ({
   task,
   userRole = "projectmanager",
@@ -115,12 +116,11 @@ const TaskCard = ({
   const { workspaceId, projectId } = useParams();
 
   const [status, setStatus] = useState(initialStatus || "Todo");
-  const [showFullDescription, setShowFullDescription] = useState(false);
   const [toast, setToast] = useState("");
 
   const currentId = _id || id;
 
-  const broadcastTaskChange = (payload) => {
+  const broadcastTaskChange = payload => {
     try {
       if ("BroadcastChannel" in window) {
         const channel = new BroadcastChannel("vpm-task-sync");
@@ -160,6 +160,7 @@ const TaskCard = ({
       window.removeEventListener("storage", applyStorageUpdate);
     };
   }, [currentId]);
+
   const currentTitle = taskTitle || title || "Untitled Task";
   const currentDeadline = deadline || dueDate;
   const subtasksCount = task.subtasks?.length || 0;
@@ -198,13 +199,13 @@ const TaskCard = ({
       ? "text-amber-500 border-amber-500 bg-transparent"
       : "text-blue-500 border-blue-500 bg-transparent";
 
- const priorityColor =
-  priority === "High"
-    ? "text-[#D96B6B] border-[#D96B6B] bg-transparent"
-    : priority === "Medium"
-    ? "text-[#D6A832] border-[#D6A832] bg-transparent"
-    : "text-[#5FAF68] border-[#5FAF68] bg-transparent";
-    
+  const priorityColor =
+    priority === "High"
+      ? "text-[#D96B6B] border-[#D96B6B] bg-transparent"
+      : priority === "Medium"
+      ? "text-[#D6A832] border-[#D6A832] bg-transparent"
+      : "text-[#5FAF68] border-[#5FAF68] bg-transparent";
+
   const progressColor =
     cleanStatus === "completed"
       ? "bg-emerald-500"
@@ -281,8 +282,6 @@ const TaskCard = ({
     onDelete?.(currentId);
   };
 
-
-
   const metadata = (
     <>
       <span>{subtasksCount} subtasks</span>
@@ -293,7 +292,7 @@ const TaskCard = ({
     </>
   );
 
-    const progressBar = (
+  const progressBar = (
     <div className="min-w-0 w-full">
       <div className="flex justify-between text-[11px] font-semibold">
         <span className="text-gray-500 dark:text-gray-500">Progress</span>
@@ -308,13 +307,13 @@ const TaskCard = ({
     </div>
   );
 
-
   const toastMessage = toast && (
     <div className="fixed bottom-5 right-5 z-50 flex max-w-sm items-center gap-3 rounded-xl border border-emerald-200 bg-white px-4 py-3 shadow-xl dark:border-emerald-900/50 dark:bg-slate-900">
       <CheckCircle2 size={20} className="shrink-0 text-emerald-500" />
       <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{toast}</p>
     </div>
   );
+
   if (!isTM && isListView) {
     return (
       <div className="relative w-full min-w-0 max-w-full overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-2.5 min-[430px]:p-3 min-[600px]:p-4 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 group box-border">
@@ -381,6 +380,7 @@ const TaskCard = ({
       </div>
     );
   }
+
   if (isTM && !isListView) {
     return (
       <>
@@ -393,7 +393,6 @@ const TaskCard = ({
               completedDisabled={!canMarkCompleted}
               widthClass="w-[78px] min-[430px]:w-[92px]"
             />
-        
           </div>
 
           <Link to={targetPath} state={task} className="flex flex-col min-w-0 max-w-full w-full">
@@ -407,8 +406,9 @@ const TaskCard = ({
             </div>
 
             <div className="mb-3 min-w-0">
-              <p className={`text-[10px] min-[430px]:text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-relaxed break-words ${showFullDescription ? "" : "line-clamp-2"}`}>{description || "No description available."}</p>
-             
+              <p className="text-[10px] min-[430px]:text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-relaxed break-words line-clamp-2">
+                {description || "No description available."}
+              </p>
             </div>
 
             <div className="space-y-1.5 mb-3 min-w-0">
@@ -418,11 +418,11 @@ const TaskCard = ({
               </div>
               <div className="flex items-center justify-between gap-2 text-[11px] font-semibold">
                 <span className="text-slate-500 dark:text-slate-500">Priority</span>
-                <span className={`px-2 py-0.5 rounded-md text-[12px] font-bold border  shrink-0 ${priorityColor}`}>{priority || "N/A"}</span>
+                <span className={`px-2 py-0.5 rounded-md text-[12px] font-bold border shrink-0 ${priorityColor}`}>{priority || "N/A"}</span>
               </div>
               <div className="flex items-center justify-between gap-2 text-[11px] font-semibold">
                 <span className="text-slate-500 dark:text-slate-500">Deadline</span>
-                <span className="text-slate-600 dark:text-slate-300 ">{formatDate(currentDeadline)}</span>
+                <span className="text-slate-600 dark:text-slate-300">{formatDate(currentDeadline)}</span>
               </div>
             </div>
 
@@ -431,11 +431,12 @@ const TaskCard = ({
             <div className="flex flex-wrap gap-x-2 gap-y-1 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-[10px] font-semibold text-slate-500 dark:text-slate-500">{metadata}</div>
           </Link>
         </div>
-        
+
         {toastMessage}
       </>
     );
   }
+
   if (isTM && isListView) {
     return (
       <>
@@ -448,8 +449,7 @@ const TaskCard = ({
                 </div>
                 <div className="min-w-0 flex-1 overflow-hidden">
                   <h3 className="text-[10px] min-[430px]:text-xs min-[600px]:text-sm font-bold text-slate-800 dark:text-slate-200 truncate tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={currentTitle}>{currentTitle}</h3>
-                  <p className={`mt-0.5 min-[600px]:mt-1 text-[8px] min-[430px]:text-[9px] min-[600px]:text-[11px] font-medium text-slate-500 dark:text-slate-500 leading-relaxed ${showFullDescription ? "" : "line-clamp-1"}`}>{description || "No description available."}</p>
-
+                  <p className="mt-0.5 min-[600px]:mt-1 text-[8px] min-[430px]:text-[9px] min-[600px]:text-[11px] font-medium text-slate-500 dark:text-slate-500 leading-relaxed line-clamp-1">{description || "No description available."}</p>
                 </div>
               </Link>
 
@@ -468,8 +468,12 @@ const TaskCard = ({
                   <span className="text-[9px] min-[600px]:text-[11px] font-semibold text-gray-500 dark:text-gray-500">Deadline</span>
                   <span className="text-[9px] min-[600px]:text-[10px] font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">{formatDate(currentDeadline)}</span>
                 </div>
-                <div className="flex items-center gap-1 min-[600px]:gap-1.5 text-[8px] min-[600px]:text-[9px] font-semibold text-slate-500 dark:text-slate-500 truncate overflow-hidden">{metadata}</div>
+
+                <div className="flex items-center gap-1 min-[600px]:gap-1.5 text-[8px] min-[600px]:text-[9px] font-semibold text-slate-500 dark:text-slate-500 truncate overflow-hidden">
+                  {metadata}
+                </div>
               </div>
+
               <div className="w-[90px] min-[600px]:w-[110px] lg:w-[130px] flex-shrink-0 ml-2">
                 {progressBar}
               </div>
@@ -481,12 +485,11 @@ const TaskCard = ({
                   statusColor={statusColor}
                   completedDisabled={!canMarkCompleted}
                 />
-              
               </div>
             </div>
           </div>
         </div>
-   
+
         {toastMessage}
       </>
     );

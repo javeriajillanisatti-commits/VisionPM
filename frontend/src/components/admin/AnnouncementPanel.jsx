@@ -64,9 +64,9 @@ const AnnouncementPanel = ({ isModalOpen, setIsModalOpen }) => {
     }
   };
 
-  useEffect(() => {
-    fetchAnnouncements();
-  }, [workspaceId]);
+ useEffect(() => {
+  fetchAnnouncements();
+}, [workspaceId, fetchAnnouncements]);
 
   useEffect(() => {
     if (!announcements.length) return;

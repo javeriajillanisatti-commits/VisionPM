@@ -103,6 +103,7 @@ const TaskProgressCard = ({ project, viewMode }) => {
     buildTaskPayload,
     taskCompleted,
     applyProjectPredictionStatuses,
+     API_URL,
   ]);
 
   const handlePredictDelay = async (task) => {

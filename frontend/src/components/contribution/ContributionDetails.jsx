@@ -45,7 +45,7 @@ const dueDate = task.deadline
   const border = isDarkMode ? "border-[#263149]" : "border-slate-100";
   const label = isDarkMode ? "text-slate-400" : "text-slate-500";
   const value = isDarkMode ? "text-slate-200" : "text-slate-700";
-  const [priorityColor, priorityLight, priorityDark] = priorityStyles[priority] || priorityStyles.Medium;
+  const [priorityColor] = priorityStyles[priority] || priorityStyles.Medium;
 
   return (
     <div className={`w-full h-auto min-h-[420px] min-[600px]:min-h-[500px] lg:h-[600px] rounded-3xl border shadow-sm overflow-hidden transition-colors duration-300 ${isDarkMode ? "bg-[#11182B] border-[#263149]" : "bg-white border-slate-200"}`}>
