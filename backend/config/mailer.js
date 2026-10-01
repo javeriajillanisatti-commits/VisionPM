@@ -16,11 +16,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const warmUp = () =>
-  transporter
-    .verify()
-    .then(() => console.log("Mailer ready (SMTP connection warmed up)"))
-    .catch((err) => console.error("Mailer warm-up failed:", err.message));
+const warmUp = () => {};
 
 const RETRY_DELAYS = [2000, 5000];
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
