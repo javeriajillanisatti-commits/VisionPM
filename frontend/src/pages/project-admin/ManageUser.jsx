@@ -130,7 +130,7 @@ const ManageUsers = () => {
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      
+
       socket?.off("userStatusChanged");
       socket?.disconnect();
       window.removeEventListener("userStatusChanged", handleStatus);
