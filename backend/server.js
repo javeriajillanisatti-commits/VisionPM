@@ -55,6 +55,9 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    // Let the browser cache the CORS preflight (OPTIONS) result, so it does
+    // not send an extra request before every API call.
+    maxAge: 86400,
   })
 );
 app.use(express.json());

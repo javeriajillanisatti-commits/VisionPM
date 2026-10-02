@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import axios from "axios";
@@ -51,15 +52,22 @@ export const WorkspaceProvider = ({ children }) => {
 
   const [workspaceReady, setWorkspaceReady] = useState(false);
 
+  // Remember which token the workspace was already loaded for,
+  // so we do not load everything a second time on page refresh.
+  const lastInitTokenRef = useRef(null);
+
   // Load and restore workspace
   const initializeWorkspace = useCallback(async () => {
     const token = sessionStorage.getItem("token");
     const userRole = sessionStorage.getItem("role");
 
     if (!token) {
+      lastInitTokenRef.current = null;
       setWorkspaceReady(true);
       return;
     }
+
+    lastInitTokenRef.current = token;
 
     try {
       setWorkspaceReady(false);
@@ -168,7 +176,12 @@ export const WorkspaceProvider = ({ children }) => {
 
   // Refresh after login
   useEffect(() => {
-    const handleUserAuthenticated = () => initializeWorkspace();
+    const handleUserAuthenticated = () => {
+      // Already loaded for this same token (page refresh): skip duplicate requests.
+      const token = sessionStorage.getItem("token");
+      if (token && lastInitTokenRef.current === token) return;
+      initializeWorkspace();
+    };
     window.addEventListener("userAuthenticated", handleUserAuthenticated);
 
     return () =>
