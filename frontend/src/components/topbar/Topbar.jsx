@@ -339,6 +339,13 @@ const Topbar = ({
     notificationTypes,
   ]);
 
+  // Load profile and workspace list once on mount / role change.
+  // (Must NOT depend on loadProfileAndWorkspaces: it changes every render.)
+  useEffect(() => {
+    loadProfileAndWorkspaces();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleanRole]);
+
   useEffect(() => {
     const handleWorkspaceListUpdated =
       () => loadProfileAndWorkspaces();

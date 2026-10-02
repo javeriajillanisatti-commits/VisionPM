@@ -295,6 +295,11 @@ const Approvals = () => {
     }
   }, [showToast]);
 
+  // Initial load of approval requests
+  useEffect(() => {
+    fetchRequests(true);
+  }, [fetchRequests]);
+
   useEffect(() => setCurrentPage(1), [statusFilter]);
   const requestStatusChange = (request, newStatus) => {
     if (newStatus === request.accountStatus) return;

@@ -187,6 +187,11 @@ const MessagePage = () => {
     }
   }, []);
 
+  // Initial load of messages
+  useEffect(() => {
+    fetchMessages(false);
+  }, [fetchMessages]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [filter]);
