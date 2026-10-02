@@ -183,13 +183,6 @@ const TaskDetails = () => {
       }
     };
 
-    const intervalId = setInterval(syncSubtasks, 1000);
-    return () => {
-      cancelled = true;
-      clearInterval(intervalId);
-    };
-  }, [currentTaskId]);
-
   const resetSubtaskForm = (closeForm = true) => {
     setSubtaskTitle("");
     setSubtaskAssignee("");

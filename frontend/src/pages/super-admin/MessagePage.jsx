@@ -11,7 +11,7 @@ import MessageDropdown from "../../components/messagedetail/MessageDropdown";
 import MessageDetail from "../../components/messagedetail/MessageDetail";
 
 const PAGE_SIZE = 5;
-const POLL_INTERVAL = 2000;
+
 
 // Avatar colors
 const AVATAR_COLORS = [
@@ -186,12 +186,6 @@ const MessagePage = () => {
       if (!silent) setLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    fetchMessages(false);
-    const interval = setInterval(() => fetchMessages(true), POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchMessages]);
 
   useEffect(() => {
     setCurrentPage(1);

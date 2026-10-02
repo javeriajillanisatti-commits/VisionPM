@@ -58,11 +58,6 @@ const UploadFile = ({ userRole = "projectmanager" }) => {
     syncTaskFiles();
     const intervalId = setInterval(syncTaskFiles, 2000);
 
-    return () => {
-      cancelled = true;
-      clearInterval(intervalId);
-    };
-  }, [currentTaskId]);
 
   // Fetch task files
   const fetchTaskFiles = async () => {

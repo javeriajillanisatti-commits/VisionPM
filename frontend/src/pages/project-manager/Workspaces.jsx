@@ -33,14 +33,14 @@ const Workspaces = () => {
     };
 
     syncWorkspaces();
-    const intervalId = setInterval(syncWorkspaces, 2000);
+  
     const handleFocus = () => syncWorkspaces();
     const handleVisibility = () => { if (document.visibilityState === "visible") syncWorkspaces(); };
     window.addEventListener("focus", handleFocus);
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       cancelled = true;
-      clearInterval(intervalId);
+    
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
@@ -71,7 +71,7 @@ const Workspaces = () => {
     };
 
     syncOverview();
-    const intervalId = setInterval(syncOverview, 2000);
+
     const handleFocus = () => syncOverview();
     const handleVisibility = () => {
       if (document.visibilityState === "visible") syncOverview();
@@ -81,7 +81,7 @@ const Workspaces = () => {
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       cancelled = true;
-      clearInterval(intervalId);
+     
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibility);
     };

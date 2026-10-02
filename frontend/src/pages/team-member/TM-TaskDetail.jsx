@@ -115,10 +115,7 @@ const TaskDetails = () => {
         if (!cancelled && liveTask) { setTask((prev) => ({ ...(prev || {}), ...liveTask, subtasks: liveTask.subtasks || [], })); }
       } catch (error) { console.error("Error syncing TM task:", error); }
     };
-    const intervalId = setInterval(syncTask, 2000);
-    return () => { cancelled = true; clearInterval(intervalId); };
-  }, [taskId]);
-
+  
   // Open status selector from event
   useEffect(() => {
     const openStatus = () => statusRef.current?.focus();

@@ -52,13 +52,6 @@ const Dashboard = () => {
     };
     // data load for first time
     fetchDashboardLiveStats({ showLoader: true });
-
-    // after every 2 sec dashboard uppdation interval
-    intervalId = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        fetchDashboardLiveStats();
-      }
-    }, 2000);
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         fetchDashboardLiveStats();
@@ -69,7 +62,6 @@ const Dashboard = () => {
     window.addEventListener("focus", handleWindowFocus)
     return () => {
       cancelled = true;
-      if (intervalId) window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleWindowFocus);
       dashboardRequestInFlight.current = false;

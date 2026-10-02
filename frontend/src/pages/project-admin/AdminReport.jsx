@@ -135,12 +135,6 @@ const AdminReport = () => {
     }
   }, [workspaceId]);
 
-  useEffect(() => {
-    loadData(true);
-    const interval = setInterval(() => loadData(false), 2000);
-    return () => clearInterval(interval);
-  }, [loadData]);
-
   const projectList = useMemo(
     () =>
       workspaceId

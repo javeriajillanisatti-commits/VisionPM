@@ -340,10 +340,6 @@ const Topbar = ({
   ]);
 
   useEffect(() => {
-    loadProfileAndWorkspaces();
-  }, [loadProfileAndWorkspaces]);
-
-  useEffect(() => {
     const handleWorkspaceListUpdated =
       () => loadProfileAndWorkspaces();
 

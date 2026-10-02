@@ -92,12 +92,12 @@ const Tasks = () => {
     const onVisible = () => document.visibilityState === "visible" && sync();
 
     sync();
-    const intervalId = setInterval(sync, 1000);
+  
     window.addEventListener("focus", sync);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
-      clearInterval(intervalId);
+      
       window.removeEventListener("focus", sync);
       document.removeEventListener("visibilitychange", onVisible);
     };

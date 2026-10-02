@@ -80,13 +80,6 @@ const MonitorProjectsandTasks = () => {
     loadData();
   }, [workspaceId, loadData]);
 
-  // Refresh data
-  useEffect(() => {
-    const timer = setInterval(() => loadData(true), 2000);
-
-    return () => clearInterval(timer);
-  }, [workspaceId, loadData]);
-
   // Calculate project statistics
   const getProjectStats = project => {
     const list = tasks.filter(

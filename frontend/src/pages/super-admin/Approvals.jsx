@@ -295,13 +295,6 @@ const Approvals = () => {
     }
   }, [showToast]);
 
-  // Fetch approval requests
-  useEffect(() => {
-    fetchRequests(true);
-    const intervalId = setInterval(() => fetchRequests(false), 10000);
-    return () => clearInterval(intervalId);
-  }, [fetchRequests]);
-
   useEffect(() => setCurrentPage(1), [statusFilter]);
   const requestStatusChange = (request, newStatus) => {
     if (newStatus === request.accountStatus) return;
