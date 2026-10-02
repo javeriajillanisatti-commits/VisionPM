@@ -87,19 +87,6 @@ const AdminDashboard = () => {
     };
   }, [workspaceId]);
 
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const data = await getDashboardData(workspaceId);
-        setDashboard(normalizeDashboard(data));
-      } catch (error) {
-        console.error("Dashboard auto-refresh error:", error);
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [workspaceId]);
-
   const totalProjects = dashboard.projects;
   const percentage = key =>
     totalProjects
