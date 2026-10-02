@@ -135,6 +135,10 @@ const AdminReport = () => {
     }
   }, [workspaceId]);
 
+  useEffect(() => {
+  loadData(true);
+}, [loadData]);
+
   const projectList = useMemo(
     () =>
       workspaceId
