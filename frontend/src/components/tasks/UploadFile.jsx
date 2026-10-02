@@ -31,32 +31,39 @@ const UploadFile = ({ userRole = "projectmanager" }) => {
   const isPM = cleanRole === "projectmanager";
   const currentUserId = decodeUserId(sessionStorage.getItem("token"));
 
-  // Sync task files
-  useEffect(() => {
-    if (!currentTaskId) return;
-    let cancelled = false;
+// Sync task files
+useEffect(() => {
+  if (!currentTaskId) return;
 
-    const syncTaskFiles = async () => {
-      try {
-        const { data } = await axios.get(
-          `${API_URL}/api/tasks/${currentTaskId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-            },
-          }
-        );
-        const liveTask = data?.task || data || {};
-        if (!cancelled && Array.isArray(liveTask.files)) {
-          setAttachments(liveTask.files);
+  let cancelled = false;
+
+  const syncTaskFiles = async () => {
+    try {
+      const { data } = await axios.get(
+        `${API_URL}/api/tasks/${currentTaskId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+          },
         }
-      } catch (error) {
-        console.error("Error syncing task attachments:", error);
-      }
-    };
+      );
 
-    syncTaskFiles();
-    const intervalId = setInterval(syncTaskFiles, 2000);
+      const liveTask = data?.task || data || {};
+
+      if (!cancelled && Array.isArray(liveTask.files)) {
+        setAttachments(liveTask.files);
+      }
+    } catch (error) {
+      console.error("Error syncing task attachments:", error);
+    }
+  };
+
+  syncTaskFiles();
+
+  return () => {
+    cancelled = true;
+  };
+}, [currentTaskId]);
 
 
   // Fetch task files

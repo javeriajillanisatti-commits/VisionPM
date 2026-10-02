@@ -108,13 +108,34 @@ const TaskDetails = () => {
     fetchTask();
   }, [taskId]);
   // Keep task data synchronized
-  useEffect(() => {
-    if (!taskId) return; let cancelled = false; const syncTask = async () => {
+    useEffect(() => {
+    if (!taskId) return;
+
+    let cancelled = false;
+
+    const syncTask = async () => {
       try {
-        const data = await getTaskById(taskId); const liveTask = data?.task || data;
-        if (!cancelled && liveTask) { setTask((prev) => ({ ...(prev || {}), ...liveTask, subtasks: liveTask.subtasks || [], })); }
-      } catch (error) { console.error("Error syncing TM task:", error); }
+        const data = await getTaskById(taskId);
+        const liveTask = data?.task || data;
+
+        if (!cancelled && liveTask) {
+          setTask((prev) => ({
+            ...(prev || {}),
+            ...liveTask,
+            subtasks: liveTask.subtasks || [],
+          }));
+        }
+      } catch (error) {
+        console.error("Error syncing TM task:", error);
+      }
     };
+
+    syncTask();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [taskId]);
   
   // Open status selector from event
   useEffect(() => {

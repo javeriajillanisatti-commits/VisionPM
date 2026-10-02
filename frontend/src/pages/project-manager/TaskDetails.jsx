@@ -168,20 +168,28 @@ const TaskDetails = () => {
 
   // user is editing Task Details.
   useEffect(() => {
-    if (!currentTaskId) return;
+  if (!currentTaskId) return;
 
-    let cancelled = false;
-    const syncSubtasks = async () => {
-      try {
-        const response = await getTaskById(currentTaskId);
-        const liveTask = response?.task || response;
-        if (!cancelled && liveTask) {
-          setSubtasks(liveTask.subtasks || []);
-        }
-      } catch (error) {
-        console.error("Error syncing PM subtasks:", error);
+  let cancelled = false;
+  const syncSubtasks = async () => {
+    try {
+      const response = await getTaskById(currentTaskId);
+      const liveTask = response?.task || response;
+      if (!cancelled && liveTask) {
+        setSubtasks(liveTask.subtasks || []);
       }
-    };
+    } catch (error) {
+      console.error("Error syncing PM subtasks:", error);
+    }
+  };
+
+  syncSubtasks();
+
+  return () => {
+    cancelled = true;
+  };
+}, [currentTaskId]);
+
 
   const resetSubtaskForm = (closeForm = true) => {
     setSubtaskTitle("");
