@@ -28,7 +28,7 @@ const Dashboard = () => {
       return undefined;
     }
     let cancelled = false;
-    let intervalId = null;
+  
     const fetchDashboardLiveStats = async ({ showLoader = false } = {}) => {
       if (cancelled || dashboardRequestInFlight.current) return;
       dashboardRequestInFlight.current = true;
