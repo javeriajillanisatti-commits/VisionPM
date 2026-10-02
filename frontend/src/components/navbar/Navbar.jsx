@@ -1,18 +1,39 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import logo from "../../components/assets/logo.png";
 import Links from "../navbar/Links";
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
   const mobileLinks = [
-    ["Home", "#home"],
-    ["Features", "#features"],
-    ["How it works", "#workflow"],
+    ["Home", "home"],
+    ["Features", "features"],
+    ["How it works", "workflow"],
+    ["Contact", "contact"],
   ];
+
+  // Go to a landing page section. If we are on another page
+  // (login/signup), go back to the landing page first.
+  const goToSection = (id) => {
+    setIsOpen(false);
+
+    const scroll = (tries = 0) => {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+      else if (tries < 20) setTimeout(() => scroll(tries + 1), 50);
+    };
+
+    if (location.pathname === "/") {
+      scroll();
+    } else {
+      navigate("/");
+      setTimeout(scroll, 50);
+    }
+  };
 
   // Navigate and close mobile menu
   const goTo = (path) => {
@@ -65,15 +86,15 @@ const Navbar = () => {
       {/* Mobile Menu */}
       {isOpen && (
         <div className="lg:hidden bg-white border-t border-slate-100 p-6 space-y-4 shadow-xl">
-          {mobileLinks.map(([label, href]) => (
-            <a
-              key={href}
-              href={href}
-              onClick={() => setIsOpen(false)}
-              className="block text-slate-600 font-medium hover:text-blue-600"
+          {mobileLinks.map(([label, id]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => goToSection(id)}
+              className="block w-full text-left text-slate-600 font-medium hover:text-blue-600"
             >
               {label}
-            </a>
+            </button>
           ))}
 
           <button

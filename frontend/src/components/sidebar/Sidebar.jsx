@@ -52,7 +52,7 @@ const Sidebar = ({ isOpen, setIsOpen, userRole }) => {
 
   return (
     <div>
-      <div className={`fixed inset-y-0 left-0 z-[90] bg-white dark:bg-slate-900 h-screen border-r border-gray-100 dark:border-slate-800/80 flex flex-col transition-all duration-300 ease-in-out ${
+      <div className={`fixed inset-y-0 left-0 z-[90] bg-white dark:bg-slate-900 h-[100dvh] border-r border-gray-100 dark:border-slate-800/80 flex flex-col transition-all duration-300 ease-in-out ${
         isOpen ? "w-72 translate-x-0" : "w-72 -translate-x-full lg:translate-x-0 lg:w-20"
       }`}>
         <div className={`p-6 flex items-center justify-between border-b border-gray-50 dark:border-slate-800/60 relative ${
@@ -110,7 +110,7 @@ const Sidebar = ({ isOpen, setIsOpen, userRole }) => {
           })}
         </nav>
 
-        <div className={`p-4 border-t border-gray-50 dark:border-slate-800/60 ${!isOpen ? "lg:px-2" : ""}`}>
+        <div className={`p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shrink-0 border-t border-gray-50 dark:border-slate-800/60 ${!isOpen ? "lg:px-2" : ""}`}>
           <button
             onClick={handleLogout}
             title={!isOpen ? "Logout" : ""}

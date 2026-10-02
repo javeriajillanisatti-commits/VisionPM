@@ -23,19 +23,6 @@ const hasConsecutiveSpecialChars = (value) => /[-',]{2,}/.test(value);
 const startsOrEndsWithSpecialChar = (value) => /^[-',]|[-',]$/u.test(value.trim());
 const hasInvalidStandaloneSpecial = (value) => /^[-,']+$/.test(value.trim());
 
-const hasDuplicateWord = (value) => {
-  const words = value.toLowerCase().trim().split(/\s+/).filter(Boolean);
-  return words.length > 1 && new Set(words).size !== words.length;
-};
-
-const hasRepeatedWordSequence = (value) => {
-  const words = value.toLowerCase().trim().split(/\s+/).filter(Boolean);
-  for (let size = 1; size <= Math.floor(words.length / 2); size++)
-    for (let i = 0; i + size * 2 <= words.length; i++)
-      if (words.slice(i, i + size).join(" ") === words.slice(i + size, i + size * 2).join(" ")) return true;
-  return false;
-};
-
 const hasRepeatingPattern = (value) => {
   const compact = value.replace(/\s/g, "").toLowerCase();
   for (let size = 1; size <= Math.floor(compact.length / 2); size++) {
@@ -76,8 +63,6 @@ const validateMeaningfulText = (value, minimumLength) => {
     [hasConsecutiveSpecialChars(text), "Consecutive special characters are not allowed."],
     [startsOrEndsWithSpecialChar(text), "Text cannot start or end with -, , or '."],
     [hasInvalidStandaloneSpecial(text), "Invalid special character input."],
-    [hasDuplicateWord(text), "Duplicate words are not allowed."],
-    [hasRepeatedWordSequence(text), "Repeated word sequences are not allowed."],
     [hasMostlySameCharacter(text), "Text contains too many repeated characters."],
     [hasHtmlOrScript(text), "HTML or script input is not allowed."],
     [hasSuspiciousInjection(text), "Invalid or suspicious input detected."],

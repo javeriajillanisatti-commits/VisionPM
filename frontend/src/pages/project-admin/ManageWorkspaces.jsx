@@ -184,15 +184,12 @@ const ManageWorkspaces = () => {
       setWorkspaces(prev => [...prev, workspace]);
     }
     refreshWorkspaceList();
-    alert("Workspace created successfully.");
   };
 
   const updateWorkspace = workspace => {
     const id = idOf(workspace);
     setWorkspaces(prev => prev.map(ws => (idOf(ws) === id ? workspace : ws)));
     if (String(activeWorkspace?.id) === id) setActiveWorkspace(workspace);
-    setEditingWorkspace(null);
-    setShowModal(false);
     refreshWorkspaceList();
   };
 

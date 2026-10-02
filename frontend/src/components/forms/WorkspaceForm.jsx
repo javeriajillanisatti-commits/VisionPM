@@ -14,6 +14,7 @@ const WorkspaceForm = ({
 
   const [formData, setFormData] = useState({ name: "", description: "" });
   const [errors, setErrors] = useState({ name: "", description: "", general: "" });
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     if (initialData) {
@@ -121,6 +122,7 @@ const WorkspaceForm = ({
   // Submit workspace
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (successMessage) return; // already saved, waiting to close
     if (!validateForm()) return;
 
     try {
@@ -132,13 +134,16 @@ const WorkspaceForm = ({
       if (initialData) {
         const response = await updateWorkspace(initialData._id || initialData.id, data);
         onUpdateWorkspace?.(response.workspace);
+        setSuccessMessage("Workspace updated successfully!");
       } else {
         const response = await createWorkspace(data);
         onAddWorkspace?.(response.workspace);
         refreshWorkspaceList();
+        setSuccessMessage("Workspace created successfully!");
       }
 
-      onClose();
+      // Keep the green message visible for 1 second, then close.
+      setTimeout(() => onClose(), 1000);
     } catch (err) {
       console.error("Workspace Error:", err);
       setErrors((prev) => ({
@@ -152,7 +157,14 @@ const WorkspaceForm = ({
   const inputStyle = "w-full border rounded-xl px-4 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:outline-none transition-all";
 
   return (
-    <div className="bg-white dark:bg-slate-900 shadow-2xl rounded-2xl p-8 w-full max-w-lg relative border border-gray-100 dark:border-slate-800 text-gray-900 dark:text-white transition-colors duration-200">
+    <div className="bg-white dark:bg-slate-900 shadow-2xl rounded-2xl p-8 w-full max-w-lg relative overflow-hidden border border-gray-100 dark:border-slate-800 text-gray-900 dark:text-white transition-colors duration-200">
+      {/* Success message */}
+      {successMessage && (
+        <div className="absolute top-0 left-0 w-full bg-green-500 text-white py-2 text-center text-xs font-bold animate-in slide-in-from-top z-50">
+          {successMessage}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-gray-800 dark:text-white">
