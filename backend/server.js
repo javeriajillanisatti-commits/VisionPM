@@ -46,10 +46,15 @@ connectDB();
 
 const app = express();
 
+const allowedOrigin =
+  process.env.FRONTEND_URL || "http://localhost:3000";
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: allowedOrigin,
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 app.use(express.json());
