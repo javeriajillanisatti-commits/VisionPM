@@ -93,8 +93,7 @@ const ManageUsers = () => {
   useEffect(() => {
     if (!workspaceReady) return;
 
-    fetchUsers();
-    const interval = setInterval(fetchUsers, 2000);
+    fetchUsers()
     const token = sessionStorage.getItem("token");
     let socket;
 
