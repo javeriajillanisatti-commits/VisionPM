@@ -434,7 +434,7 @@ const Approvals = () => {
               )}
             </div>
 
-            {filteredRequests.length > 0 && (
+            {filteredRequests.length > PAGE_SIZE && (
               <PaginationBar currentPage={currentPage} totalPages={totalPages}
                 setCurrentPage={setCurrentPage}
                 isDarkMode={isDarkMode}
