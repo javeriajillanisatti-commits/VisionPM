@@ -135,11 +135,11 @@ const AdminReport = () => {
     } finally {
       if (showLoader) setLoading(false);
     }
-  }, [workspaceId, liveTick]);
+  }, [workspaceId]);
 
   useEffect(() => {
   loadData(true);
-}, [loadData]);
+}, [loadData, liveTick]);
 
   const projectList = useMemo(
     () =>
