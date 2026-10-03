@@ -44,8 +44,21 @@ export const AuthProvider = ({ children }) => {
     transports: ["polling"],
   });
 
-    socketRef.current.on("connect", () =>
-      console.log("🟢 Socket connected:", socketRef.current.id)
+    let hasConnectedBefore = false;
+    socketRef.current.on("connect", () => {
+      console.log("🟢 Socket connected:", socketRef.current.id);
+      // After a dropped connection we may have missed events -> refetch everything.
+      if (hasConnectedBefore) {
+        window.dispatchEvent(
+          new CustomEvent("app:data-changed", { detail: { resource: "*", reason: "reconnect" } })
+        );
+      }
+      hasConnectedBefore = true;
+    });
+
+    // Backend says something changed (task, project, workspace, notification...)
+    socketRef.current.on("data_changed", data =>
+      window.dispatchEvent(new CustomEvent("app:data-changed", { detail: data || {} }))
     );
 
     socketRef.current.on("connect_error", error =>

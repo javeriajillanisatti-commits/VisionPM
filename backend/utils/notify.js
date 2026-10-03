@@ -1,4 +1,5 @@
 const Notification = require("../models/Notification");
+const { emitToUser } = require("../config/realtime");
 
 const createNotification = async (data) => {
   try {
@@ -44,6 +45,7 @@ const createNotification = async (data) => {
     });
 
     console.log(`Notification created for ${recipient}: ${message}`);
+    emitToUser(recipient, "data_changed", { resource: "notifications" });
     return notification;
   } catch (error) {
     console.error("Create Notification Error:", error.message);

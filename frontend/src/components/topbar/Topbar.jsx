@@ -20,6 +20,7 @@ import NotificationDetailModal from "./NotificationDetailModal";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { useTheme } from "../../context/ThemeContext";
 import { getMyNotifications } from "../../services/notificationService";
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 
 const API_BASE =
   process.env.REACT_APP_API_URL ||
@@ -303,6 +304,9 @@ const Topbar = ({
     }
   }, [activeWorkspace]);
 
+  // Re-count unread notifications whenever the backend pushes a change
+  const notificationTick = useLiveTick({ resources: ["notifications", "tasks", "announcements", "projects"] });
+
   useEffect(() => {
     if (!showNotifications) {
       setUnreadCount(0);
@@ -337,6 +341,7 @@ const Topbar = ({
   }, [
     showNotifications,
     notificationTypes,
+    notificationTick,
   ]);
 
   // Load profile and workspace list once on mount / role change.

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react"; 
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import { 
   FileText, 
   Clock, 
@@ -37,6 +38,8 @@ const NotificationDropdown = ({
     [notificationTypes] 
   ); 
  
+  const liveTick = useLiveTick({ resources: ["notifications", "tasks", "announcements", "projects"] }); 
+
   useEffect(() => { 
     const fetchNotifications = async () => { 
       try { 
@@ -57,7 +60,7 @@ const NotificationDropdown = ({
     }; 
  
     fetchNotifications(); 
-  }, [filterNotifications, onUnreadCountChange]); 
+  }, [filterNotifications, onUnreadCountChange, liveTick]); 
  
   const markAsRead = async id => { 
     if (!id) return; 

@@ -64,6 +64,35 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// ---------------------------------------------------------------------------
+// LIVE UPDATES: after every successful write (POST/PUT/PATCH/DELETE) tell all
+// connected clients to refetch. This replaces the old 2-second polling.
+// Chat has its own socket events, so it is skipped here.
+// ---------------------------------------------------------------------------
+const { broadcastDataChanged } = require("./config/realtime");
+const LIVE_SKIP_RESOURCES = new Set([
+  "auth",
+  "comments",
+  "project-discussions",
+  "delay-prediction",
+]);
+app.use("/api", (req, res, next) => {
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
+
+  res.on("finish", () => {
+    if (res.statusCode >= 400) return;
+    const resource = req.path.split("/")[1] || "";
+    if (LIVE_SKIP_RESOURCES.has(resource)) return;
+    broadcastDataChanged({
+      resource,
+      method: req.method,
+      actorId: req.user?.id ? String(req.user.id) : null,
+    });
+  });
+
+  next();
+});
+
 app.get("/", (req, res) => {
   res.send("Backend Running");
 });
