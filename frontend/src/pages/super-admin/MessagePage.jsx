@@ -25,7 +25,6 @@ const AVATAR_COLORS = [
 ];
 
 const getAvatarColor = (name) => {
-  const liveTick = useLiveTick({ resources: ["contact", "notifications"] });
   if (!name) return AVATAR_COLORS[0];
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 };
@@ -170,6 +169,7 @@ const MessageRow = ({ msg, onOpen }) => {
 };
 
 const MessagePage = () => {
+   const liveTick = useLiveTick({ resources: ["contact", "notifications"] });
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);

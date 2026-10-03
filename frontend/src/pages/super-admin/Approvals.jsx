@@ -30,7 +30,6 @@ const STATUS_DARK = {
 };
 
 const getAvatarColor = (name) => {
-  const liveTick = useLiveTick({ resources: ["users", "approvals"] });
   if (!name) return AVATAR_COLORS[0];
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -267,6 +266,7 @@ const ToastBanner = ({ toast, onClose }) => (
 
 const Approvals = () => {
   const { isDarkMode } = useTheme();
+  const liveTick = useLiveTick({ resources: ["users", "approvals"] });
   const [requests, setRequests] = useState([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [cvLoading, setCvLoading] = useState(false);

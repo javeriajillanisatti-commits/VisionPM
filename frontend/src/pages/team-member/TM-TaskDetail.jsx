@@ -17,7 +17,6 @@ import { useTheme } from "../../context/ThemeContext";
 
 // Status Dropdown Component
 const StatusDropdown = ({ value, onChange, isDarkMode }) => {
-  const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
@@ -95,6 +94,7 @@ const TaskDetails = () => {
   const navigate = useNavigate();
   const { taskId } = useParams();
   const { isDarkMode } = useTheme();
+   const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const statusRef = useRef(null);

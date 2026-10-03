@@ -28,7 +28,6 @@ const SORT_OPTIONS = [
 ];
 
 const CustomSortDropdown = ({ value, onChange, options, isDarkMode }) => {
-  const liveTick = useLiveTick({ resources: ["projects", "tasks"] });
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
@@ -104,7 +103,7 @@ const CustomSortDropdown = ({ value, onChange, options, isDarkMode }) => {
 const TMProjects = () => {
   const { isDarkMode } = useTheme();
   const { state } = useLocation();
-
+  const liveTick = useLiveTick({ resources: ["projects", "tasks"] });
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showFullDesc, setShowFullDesc] = useState(false);
