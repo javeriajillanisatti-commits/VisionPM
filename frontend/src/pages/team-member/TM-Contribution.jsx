@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MousePointerClick } from "lucide-react";
@@ -11,6 +12,7 @@ import { useTheme } from "../../context/ThemeContext";
 const emptyProfile = { fullName: "", profilePic: "" };
 
 const TMContribution = () => {
+  const liveTick = useLiveTick({ resources: ["projects", "tasks"] });
   const { isDarkMode } = useTheme();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
@@ -76,7 +78,7 @@ const TMContribution = () => {
     };
 
     fetchContribution();
-  }, [selectedProjectId]);
+  }, [selectedProjectId, liveTick]);
 
   // Handle project and task selection
   const handleNodeClick = taskId => setSelectedTask(tasks.find(t => t._id === taskId) || null);

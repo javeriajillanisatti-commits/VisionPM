@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useMemo, useState } from "react";
 import WorkspaceCard from "../../components/cards/WorkspaceCard";
 import { getMyWorkspace, getMyProjects, getMyTasks } from "../../services/memberService";
@@ -6,6 +7,7 @@ import { useAuth } from "../../context/AuthContext";
 import { AlertCircle, User } from "lucide-react";
 
 const MemberWorkspace = () => {
+  const liveTick = useLiveTick({ resources: ["workspaces", "projects", "tasks"] });
   const { isDarkMode } = useTheme();
   const { user } = useAuth();
   const [workspace, setWorkspace] = useState(null);
@@ -36,7 +38,7 @@ const MemberWorkspace = () => {
       }
     };
     fetchWorkspaceData();
-  }, []);
+  }, [liveTick]);
 
   // Map projects for quick task lookup
   const projectMap = useMemo(

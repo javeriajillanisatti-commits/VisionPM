@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -27,6 +28,7 @@ const SORT_OPTIONS = [
 ];
 
 const CustomSortDropdown = ({ value, onChange, options, isDarkMode }) => {
+  const liveTick = useLiveTick({ resources: ["projects", "tasks"] });
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
@@ -146,7 +148,7 @@ const TMProjects = () => {
     };
 
     fetchProjects();
-  }, [currentWorkspaceId]);
+  }, [currentWorkspaceId, liveTick]);
 
   const filteredProjects = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();

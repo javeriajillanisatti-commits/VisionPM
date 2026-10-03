@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useState, useRef } from "react";
 import { CheckCircle, Clock, ListTodo, Layout, Calendar, ChevronDown } from "lucide-react";
 import { jsPDF } from "jspdf";
@@ -43,6 +44,7 @@ const CustomDropdown = ({ value, onChange, options, isDarkMode }) => {
 };
 
 const TMReport = () => {
+  const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
   const { isDarkMode } = useTheme();
   const [myTasks, setMyTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +63,7 @@ const TMReport = () => {
       }
     };
     fetchTasks();
-  }, []);
+  }, [liveTick]);
   // Build project list
   const projectsMap = new Map();
   myTasks.forEach(task => {

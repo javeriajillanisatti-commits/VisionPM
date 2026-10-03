@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { useParams, Link } from "react-router-dom";
@@ -36,6 +37,7 @@ const EmptyState = ({ icon: Icon, title, text }) => (
 );
 
 const Tasks = () => {
+  const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
   const { projectId } = useParams();
   const { isDarkMode } = useTheme();
   const [projectTitle, setProjectTitle] = useState("Project Tasks");
@@ -101,7 +103,7 @@ const Tasks = () => {
       window.removeEventListener("focus", sync);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [projectId]);
+  }, [projectId, liveTick]);
 
   const fetchProjectMetaAndTasks = async () => {
     try {

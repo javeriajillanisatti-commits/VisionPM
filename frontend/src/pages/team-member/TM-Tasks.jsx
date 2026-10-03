@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -168,6 +169,7 @@ const CustomStatusDropdown = ({ value, onChange, filters, isDarkMode }) => {
 };
 
 const TMTasks = () => {
+  const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
   const { isDarkMode } = useTheme();
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -194,7 +196,7 @@ const TMTasks = () => {
     !showFullDescription && isLongDescription
       ? `${projectDescription.slice(0, DESCRIPTION_LIMIT).trim()}...`
       : projectDescription;
-  useEffect(() => setShowFullDescription(false), [projectId]);
+  useEffect(() => setShowFullDescription(false), [projectId, liveTick]);
 
   // Fetch project details
   useEffect(() => {
@@ -215,7 +217,7 @@ const TMTasks = () => {
     };
 
     fetchProject();
-  }, [projectId]);
+  }, [projectId, liveTick]);
 
   // Fetch member tasks
   useEffect(() => {
@@ -239,7 +241,7 @@ const TMTasks = () => {
     };
 
     fetchTasks();
-  }, [projectId]);
+  }, [projectId, liveTick]);
 
   const filterCounts = useMemo(() => ({
     all: memberTasks.length,

@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useState, useEffect, useRef } from "react";
 import { useWorkspace } from "../../context/WorkspaceContext"; 
 import { useTheme } from "../../context/ThemeContext";
@@ -10,6 +11,7 @@ import { FolderKanban,ListTodo, CheckCircle2, CircleDot, Activity } from "lucide
 import axios from "axios";
 
 const Dashboard = () => {
+  const liveTick = useLiveTick({ resources: ["dashboard", "projects", "tasks"] });
   const { activeWorkspace } = useWorkspace(); 
   const { isDarkMode } = useTheme();
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,7 @@ const Dashboard = () => {
       window.removeEventListener("focus", handleWindowFocus);
       dashboardRequestInFlight.current = false;
     };
-  }, [activeWorkspace]);
+  }, [activeWorkspace, liveTick]);
   if (loading) {
     return (
       <div className="py-32 text-center text-gray-400 font-bold animate-pulse text-sm uppercase tracking-widest">

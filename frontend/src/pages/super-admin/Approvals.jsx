@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FileText, Clock, CheckCircle, XCircle, X, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import CVDetailsModal from "../../components/approvaltable/CVDetailsModal";
@@ -29,6 +30,7 @@ const STATUS_DARK = {
 };
 
 const getAvatarColor = (name) => {
+  const liveTick = useLiveTick({ resources: ["users", "approvals"] });
   if (!name) return AVATAR_COLORS[0];
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -298,7 +300,7 @@ const Approvals = () => {
   // Initial load of approval requests
   useEffect(() => {
     fetchRequests(true);
-  }, [fetchRequests]);
+  }, [fetchRequests, liveTick]);
 
   useEffect(() => setCurrentPage(1), [statusFilter]);
   const requestStatusChange = (request, newStatus) => {

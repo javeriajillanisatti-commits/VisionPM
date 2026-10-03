@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useState, useEffect, useCallback } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
@@ -13,6 +14,7 @@ import { getProjectMembers } from "../../services/taskService";
 const SIZE_POINTS = { XS: 5, S: 10, M: 20, L: 40, XL: 80 };
 
 const TaskDetails = () => {
+  const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
   const navigate = useNavigate();
   const { state } = useLocation();
   const { taskId: routeTaskId } = useParams();
@@ -164,7 +166,7 @@ const TaskDetails = () => {
     if (currentTaskId) {
       fetchTaskFullDetails(currentTaskId);
     }
-  }, [currentTaskId, fetchTaskFullDetails]);
+  }, [currentTaskId, fetchTaskFullDetails, liveTick]);
 
   // user is editing Task Details.
   useEffect(() => {

@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { useWorkspace } from "../../context/WorkspaceContext";
@@ -6,6 +7,7 @@ import axios from "axios";
 import MembersTable from "../../components/project/MembersTable";
 
 const Members = () => {
+  const liveTick = useLiveTick({ resources: ["workspaces", "users", "projects"] });
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
@@ -47,7 +49,6 @@ const Members = () => {
 
     fetchWorkspaceProjectMembers();
 
-    const intervalId = setInterval(fetchWorkspaceProjectMembers, 2000);
     const handleFocus = () => fetchWorkspaceProjectMembers();
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -60,11 +61,10 @@ const Members = () => {
 
     return () => {
       cancelled = true;
-      clearInterval(intervalId);
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activeWorkspace]);
+  }, [activeWorkspace, liveTick]);
 
   const filteredMembers = members
     .filter((m) => {

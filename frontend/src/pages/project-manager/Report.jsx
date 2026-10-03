@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useState, useRef } from 'react';
 import { useWorkspace } from "../../context/WorkspaceContext"; 
 import { useTheme } from "../../context/ThemeContext";
@@ -11,6 +12,7 @@ import autoTable from 'jspdf-autotable';
 import { FolderKanban, CheckCircle2, ListTodo, BarChart3, Filter, FileText, ChevronDown } from "lucide-react";
 
 const Report = () => {
+  const liveTick = useLiveTick({ resources: ["projects", "tasks", "users"] });
   const { activeWorkspace } = useWorkspace(); 
   const { isDarkMode } = useTheme();
   const [loading, setLoading] = useState(false);
@@ -86,7 +88,6 @@ const Report = () => {
     };
 
     fetchWorkspaceReportsData(true);
-    const intervalId = setInterval(refreshReport, 2000);
     const handleFocus = () => refreshReport();
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -98,11 +99,10 @@ const Report = () => {
 
     return () => {
       cancelled = true;
-      clearInterval(intervalId);
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [workspaceIdDependency]);
+  }, [workspaceIdDependency, liveTick]);
  
   const getComputedFilteredView = () => {
     const reports = allReportsDump || [];

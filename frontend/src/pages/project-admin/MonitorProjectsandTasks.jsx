@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, FolderOpen, Search, X } from "lucide-react";
 import { deleteProject, getDashboardProjects } from "../../services/projectService";
@@ -14,6 +15,7 @@ const getId = value =>
   String(typeof value === "object" ? value?._id : value);
 
 const MonitorProjectsandTasks = () => {
+  const liveTick = useLiveTick({ resources: ["projects", "tasks", "workspaces"] });
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
   const workspaceId = activeWorkspace?.id;
@@ -78,7 +80,7 @@ const MonitorProjectsandTasks = () => {
     setTasks([]);
     setCurrentPage(1);
     loadData();
-  }, [workspaceId, loadData]);
+  }, [workspaceId, loadData, liveTick]);
 
   // Calculate project statistics
   const getProjectStats = project => {

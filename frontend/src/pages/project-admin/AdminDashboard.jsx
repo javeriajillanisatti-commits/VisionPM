@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useState } from "react";
 import StatsCard from "../../components/cards/StatsCard";
 import StatusProgressCard from "../../components/admin/StatusProgressCard";
@@ -48,6 +49,7 @@ const normalizeDashboard = data => {
 };
 
 const AdminDashboard = () => {
+  const liveTick = useLiveTick({ resources: ["projects", "tasks", "users", "workspaces"] });
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
   const [dashboard, setDashboard] = useState(initialDashboard);
@@ -85,7 +87,7 @@ const AdminDashboard = () => {
     return () => {
       mounted = false;
     };
-  }, [workspaceId]);
+  }, [workspaceId, liveTick]);
 
   const totalProjects = dashboard.projects;
   const percentage = key =>

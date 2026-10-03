@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -17,6 +18,7 @@ import {
 const USERS_PER_PAGE = 8;
 
 const ManageUsers = () => {
+  const liveTick = useLiveTick({ resources: ["users", "workspaces", "projects"] });
   const { activeWorkspace, workspaceReady } = useWorkspace();
   const { isDarkMode } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
@@ -138,7 +140,7 @@ const ManageUsers = () => {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [fetchUsers, workspaceReady]);
+  }, [fetchUsers, workspaceReady, liveTick]);
 
   useEffect(() => setCurrentPage(1), [debouncedSearchTerm, roleFilter]);
 

@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Link, useLocation, useParams } from "react-router-dom";
@@ -21,6 +22,7 @@ import { useTheme } from "../../context/ThemeContext";
 const PER_PAGE = 9;
 
 const AdminProjects = () => {
+  const liveTick = useLiveTick({ resources: ["projects", "tasks", "workspaces"] });
   const { state, search } = useLocation();
   const { workspaceId } = useParams();
   const { isDarkMode: dark } = useTheme();
@@ -152,7 +154,7 @@ const AdminProjects = () => {
       return;
     }
     fetchProjects();
-  }, [currentWorkspaceId, workspaceReady, fetchProjects]);
+  }, [currentWorkspaceId, workspaceReady, fetchProjects, liveTick]);
 
   const handleDeleteProject = async (id, count = 0) => {
     const message = count

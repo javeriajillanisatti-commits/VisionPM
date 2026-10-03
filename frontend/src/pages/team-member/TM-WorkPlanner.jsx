@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useCallback, useEffect, useState } from "react";
 import { getMyTasks } from "../../services/memberService";
 import {
@@ -28,6 +29,7 @@ const emptyModal = {
 };
 
 const TMWorkPlanner = () => {
+  const liveTick = useLiveTick({ resources: ["tasks", "work-plans"] });
   const { isDarkMode } = useTheme();
   const [selectedDate, setSelectedDate] = useState(toDateString(new Date()));
   const [allTasks, setAllTasks] = useState([]);
@@ -46,7 +48,7 @@ const TMWorkPlanner = () => {
       }
     };
     fetchTasks();
-  }, []);
+  }, [liveTick]);
 
   // Fetch daily work plans
   const fetchPlans = useCallback(async () => {
@@ -64,7 +66,7 @@ const TMWorkPlanner = () => {
 
   useEffect(() => {
     fetchPlans();
-  }, [fetchPlans]);
+  }, [fetchPlans, liveTick]);
 
   // Remove completed tasks from planner
   const isCompleted = task =>

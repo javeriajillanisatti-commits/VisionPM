@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import axios from "axios";
 import { getAllWorkspaces } from "../../services/workspaceService";
@@ -66,6 +67,7 @@ const HEALTH_STYLES = {
 };
 
 const AdminReport = () => {
+  const liveTick = useLiveTick({ resources: ["projects", "tasks", "users", "workspaces"] });
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
 
@@ -133,7 +135,7 @@ const AdminReport = () => {
     } finally {
       if (showLoader) setLoading(false);
     }
-  }, [workspaceId]);
+  }, [workspaceId, liveTick]);
 
   useEffect(() => {
   loadData(true);

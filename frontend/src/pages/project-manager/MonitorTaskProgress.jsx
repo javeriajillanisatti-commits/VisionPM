@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useState, useEffect, useRef } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { useParams } from "react-router-dom";
@@ -7,6 +8,7 @@ import TaskProgressCard from "../../components/cards/TaskProgressCard";
 import axios from "axios";
 
 const MonitorTaskProgress = () => {
+  const liveTick = useLiveTick({ resources: ["workspaces", "projects", "tasks"] });
   const { projectId } = useParams();
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
@@ -71,7 +73,6 @@ const MonitorTaskProgress = () => {
     };
 
     fetchRealMonitorAnalytics(true);
-    const refreshInterval = window.setInterval(() => fetchRealMonitorAnalytics(false), 2000);
     const handleFocus = () => fetchRealMonitorAnalytics(false);
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") fetchRealMonitorAnalytics(false);
@@ -82,11 +83,10 @@ const MonitorTaskProgress = () => {
 
     return () => {
       cancelled = true;
-      window.clearInterval(refreshInterval);
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activeWorkspace]);
+  }, [activeWorkspace, liveTick]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {

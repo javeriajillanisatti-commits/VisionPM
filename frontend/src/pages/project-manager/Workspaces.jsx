@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
@@ -7,6 +8,7 @@ import { getAllWorkspaces, getWorkspaceMonitorData } from "../../services/worksp
 import { useWorkspace } from "../../context/WorkspaceContext";
 
 const Workspaces = () => {
+  const liveTick = useLiveTick({ resources: ["workspaces", "projects", "tasks"] });
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   const { activeWorkspace } = useWorkspace();
@@ -44,7 +46,7 @@ const Workspaces = () => {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [activeWorkspace]);
+  }, [activeWorkspace, liveTick]);
 
   const workspaceId = activeWorkspace?._id || activeWorkspace?.id ||  workspaces[0]?._id || workspaces[0]?.id;
   useEffect(() => {
@@ -85,7 +87,7 @@ const Workspaces = () => {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [workspaceId]);
+  }, [workspaceId, liveTick]);
   const overview = useMemo(() => {
     const projects = monitorData;
     const tasks = projects.flatMap((project) => project.tasks || []);

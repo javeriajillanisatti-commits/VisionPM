@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
@@ -17,6 +18,7 @@ import TaskInsights from "../../components/admin/TaskInsights";
 import { useTheme } from "../../context/ThemeContext";
 
 const AdminTasks = () => {
+  const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
   const { projectId } = useParams();
   const { isDarkMode } = useTheme();
   const token = sessionStorage.getItem("token");
@@ -92,7 +94,7 @@ const AdminTasks = () => {
     }
     fetchProject();
     fetchTasks();
-  }, [projectId, fetchProject, fetchTasks]);
+  }, [projectId, fetchProject, fetchTasks, liveTick]);
 
   useEffect(() => setCurrentPage(1), [searchTerm, sortBy, viewMode]);
 

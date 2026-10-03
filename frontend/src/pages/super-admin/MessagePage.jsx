@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
@@ -24,6 +25,7 @@ const AVATAR_COLORS = [
 ];
 
 const getAvatarColor = (name) => {
+  const liveTick = useLiveTick({ resources: ["contact", "notifications"] });
   if (!name) return AVATAR_COLORS[0];
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 };
@@ -190,7 +192,7 @@ const MessagePage = () => {
   // Initial load of messages
   useEffect(() => {
     fetchMessages(false);
-  }, [fetchMessages]);
+  }, [fetchMessages, liveTick]);
 
   useEffect(() => {
     setCurrentPage(1);

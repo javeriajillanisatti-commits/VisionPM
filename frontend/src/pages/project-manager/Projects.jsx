@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useState, useRef } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import {Link, useLocation, useParams, useSearchParams,} from "react-router-dom";
@@ -11,6 +12,7 @@ import ProjectControls from "../../components/project/ProjectControls";
 import { ArrowLeft, Layers, X, Trash2, AlertTriangle } from "lucide-react";
 import {createProject, getProjectsByWorkspace, updateProject, deleteProject,} from "../../services/projectService";
 const Projects = () => {
+  const liveTick = useLiveTick({ resources: ["projects", "tasks"] });
   const { state } = useLocation();
   const { workspaceId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -110,7 +112,6 @@ const Projects = () => {
     };
 
     syncProjects();
-    const intervalId = setInterval(syncProjects, 2000);
     const handleFocus = () => syncProjects();
     const handleVisibility = () => {
       if (document.visibilityState === "visible") syncProjects();
@@ -119,11 +120,10 @@ const Projects = () => {
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       cancelled = true;
-      clearInterval(intervalId);
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [currentWorkspaceId]);
+  }, [currentWorkspaceId, liveTick]);
   const fetchWorkspaceProjects = async () => {
     if (!currentWorkspaceId) return;
     try {

@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -10,6 +11,7 @@ import { useTheme } from "../../context/ThemeContext";
 const PAGE_SIZE = 5;
 
 const WorkspaceProjectMap = () => {
+  const liveTick = useLiveTick({ resources: ["workspaces", "projects", "tasks"] });
   const { state = {} } = useLocation();
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
@@ -53,7 +55,7 @@ const WorkspaceProjectMap = () => {
       }
     };
     load();
-  }, [workspaceId]);
+  }, [workspaceId, liveTick]);
 
   useEffect(() => {
     setCurrentPage(1);

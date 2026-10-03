@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import PrimaryButton from "../../components/buttons/PrimaryButton";
@@ -102,6 +103,7 @@ const DeleteModal = ({ ws, busy, t, onCancel, onConfirm }) => (
 );
 
 const ManageWorkspaces = () => {
+  const liveTick = useLiveTick({ resources: ["workspaces", "projects", "tasks"] });
   const { activeWorkspace, allWorkspacesSelected, setActiveWorkspace, clearWorkspaceSelection, refreshWorkspaceList } = useWorkspace();
   const { isDarkMode } = useTheme();
   const t = isDarkMode ? THEME.dark : THEME.light;
@@ -150,7 +152,7 @@ const ManageWorkspaces = () => {
 
   useEffect(() => {
     fetchWorkspaces();
-  }, [fetchWorkspaces]);
+  }, [fetchWorkspaces, liveTick]);
 
 
   useEffect(() => {

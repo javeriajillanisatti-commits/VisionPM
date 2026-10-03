@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
@@ -37,6 +38,7 @@ const formatDate = date => {
 };
 
 const AdminAuditTrail = () => {
+  const liveTick = useLiveTick({ resources: ["audit", "projects", "tasks", "users", "workspaces"] });
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
 
@@ -86,7 +88,7 @@ const AdminAuditTrail = () => {
     setAuditLogs([]);
     setCurrentPage(1);
     fetchAuditLogs();
-  }, [fetchAuditLogs]);
+  }, [fetchAuditLogs, liveTick]);
 
   useEffect(() => {
     setCurrentPage(1);

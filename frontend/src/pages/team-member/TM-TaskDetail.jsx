@@ -1,3 +1,4 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useRef, useState } from "react";
 import { getTaskById, updateTask, updateSubtask } from "../../services/taskService";
 import { useNavigate, useParams } from "react-router-dom";
@@ -16,6 +17,7 @@ import { useTheme } from "../../context/ThemeContext";
 
 // Status Dropdown Component
 const StatusDropdown = ({ value, onChange, isDarkMode }) => {
+  const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
@@ -106,7 +108,7 @@ const TaskDetails = () => {
       } finally { setLoading(false); }
     };
     fetchTask();
-  }, [taskId]);
+  }, [taskId, liveTick]);
   // Keep task data synchronized
     useEffect(() => {
     if (!taskId) return;
