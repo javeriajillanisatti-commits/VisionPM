@@ -58,9 +58,7 @@ const MainLayout = ({ userRole }) => {
         {/* Main content */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-4">
-            <React.Fragment key={pageKey}>
-              <Outlet />
-            </React.Fragment>
+            <Outlet key={pageKey} />
           </div>
         </main>
       </div>
