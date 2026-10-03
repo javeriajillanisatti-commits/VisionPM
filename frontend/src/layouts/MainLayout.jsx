@@ -1,14 +1,10 @@
 import React, { useState } from "react";
 import { Outlet } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/sidebar/Sidebar";
 import Topbar from "../components/topbar/Topbar";
 
 const MainLayout = ({ userRole }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  // Get current user
-  const { user } = useAuth() || {};
 
   // Toggle sidebar
   const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
