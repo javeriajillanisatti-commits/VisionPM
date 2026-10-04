@@ -268,7 +268,9 @@ const ToastBanner = ({ toast, onClose }) => (
 
 const Approvals = () => {
   const { isDarkMode } = useTheme();
-  const liveTick = useLiveTick({ resources: ["users", "approval", "approvals"] });
+  const liveTick = useLiveTick({
+  resources: ["users", "approvals", "auth"],
+});
   const cacheKey = "approval-requests";
 const cachedRequests = approvalsCache.get(cacheKey);
 

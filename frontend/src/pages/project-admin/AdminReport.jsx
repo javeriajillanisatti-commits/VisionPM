@@ -173,13 +173,26 @@ const hasLoadedOnce = useRef(false);
       hasLoadedOnce.current = true;
     }
   }, [workspaceId]);
+useEffect(() => {
+  const cacheKey = workspaceId || "all";
+  const cachedData = adminReportCache.get(cacheKey);
 
-  useEffect(() => {
+  if (cachedData) {
+    setProjects(cachedData.projects);
+    setTasks(cachedData.tasks);
+    setUsers(cachedData.users);
+    setLoading(false);
+    hasLoadedOnce.current = true;
+
+    loadData(false);
+    return;
+  }
+
   loadData(true);
-}, [loadData]);
+}, [workspaceId, loadData]);
 
 useEffect(() => {
-  if (!liveTick) return;
+  if (!liveTick || !hasLoadedOnce.current) return;
 
   loadData(false);
 }, [liveTick, loadData]);
