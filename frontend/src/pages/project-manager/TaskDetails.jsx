@@ -10,6 +10,7 @@ import TaskMetaCard from "../../components/tasks/TaskMeta";
 import { ArrowLeft, AlertTriangle, Plus,  } from "lucide-react"; 
 import { getTaskById, updateTask, createSubtask, updateSubtask, deleteSubtask } from "../../services/taskService";
 import { getProjectMembers } from "../../services/taskService";
+const taskDetailsCache = new Map();
 
 const SIZE_POINTS = { XS: 5, S: 10, M: 20, L: 40, XL: 80 };
 
@@ -163,35 +164,117 @@ const TaskDetails = () => {
   }, [buildEqualAllocations]);
 
   useEffect(() => {
-    if (currentTaskId) {
-      fetchTaskFullDetails(currentTaskId);
-    }
-  }, [currentTaskId, fetchTaskFullDetails, liveTick]);
-
-  // user is editing Task Details.
-  useEffect(() => {
   if (!currentTaskId) return;
 
   let cancelled = false;
-  const syncSubtasks = async () => {
+
+  const syncTaskDetails = async () => {
+    const cachedData = taskDetailsCache.get(currentTaskId);
+
+    if (cachedData) {
+      setTask(cachedData.task);
+      setSubtasks(cachedData.subtasks);
+      setWorkspaceMembers(cachedData.workspaceMembers);
+    }
+
     try {
       const response = await getTaskById(currentTaskId);
       const liveTask = response?.task || response;
-      if (!cancelled && liveTask) {
-        setSubtasks(liveTask.subtasks || []);
+
+      if (!liveTask || cancelled) return;
+
+      let resolvedAssignees = [];
+
+      if (Array.isArray(liveTask.assignedTo)) {
+        resolvedAssignees = liveTask.assignedTo.map((member) => {
+          if (typeof member === "object" && member !== null) {
+            return member;
+          }
+
+          return { _id: member };
+        });
+      } else if (liveTask.assignedTo) {
+        resolvedAssignees =
+          typeof liveTask.assignedTo === "object"
+            ? [liveTask.assignedTo]
+            : [{ _id: liveTask.assignedTo }];
+      }
+
+      const targetProjectId =
+        liveTask.project?._id ||
+        liveTask.project ||
+        liveTask.projectId;
+
+      const nextTask = {
+        id: liveTask._id || liveTask.id,
+        projectId: targetProjectId,
+        taskTitle: liveTask.taskTitle || liveTask.title || "Untitled Task",
+        description: liveTask.description || "",
+        status: liveTask.status || "Todo",
+        priority: liveTask.priority || "Medium",
+        size: liveTask.size || "M",
+        requiredSkills: liveTask.requiredSkills || [],
+        deadline: liveTask.deadline
+          ? liveTask.deadline.substring(0, 10)
+          : "",
+        assignees: resolvedAssignees,
+        allocationMode: liveTask.allocationMode || "manual",
+        assigneeWorkloads: Array.isArray(liveTask.assigneeWorkloads)
+          ? liveTask.assigneeWorkloads.map((item) => ({
+              member: item.member?._id || item.member,
+              workload: Number(item.workload) || 0,
+            }))
+          : buildEqualAllocations(
+              resolvedAssignees,
+              liveTask.size || "M"
+            ),
+      };
+
+      let nextWorkspaceMembers = [];
+
+      if (targetProjectId) {
+        try {
+          const membersResponse = await getProjectMembers(targetProjectId);
+          nextWorkspaceMembers = membersResponse.members || [];
+        } catch (err) {
+          console.error("Error loading project members:", err);
+
+          if (cachedData?.workspaceMembers) {
+            nextWorkspaceMembers = cachedData.workspaceMembers;
+          }
+        }
+      }
+
+      const nextSubtasks = liveTask.subtasks || [];
+
+      if (!cancelled) {
+        setTask(nextTask);
+        setSubtasks(nextSubtasks);
+        setWorkspaceMembers(nextWorkspaceMembers);
+
+        taskDetailsCache.set(currentTaskId, {
+          task: nextTask,
+          subtasks: nextSubtasks,
+          workspaceMembers: nextWorkspaceMembers,
+        });
       }
     } catch (error) {
-      console.error("Error syncing PM subtasks:", error);
+      if (!cancelled) {
+        console.error("Error loading task real-time details:", error);
+
+        if (!cachedData) {
+          setSubtasks([]);
+        }
+      }
     }
   };
 
-  syncSubtasks();
+  syncTaskDetails();
 
   return () => {
     cancelled = true;
   };
-}, [currentTaskId]);
-
+}, [currentTaskId, buildEqualAllocations, liveTick]);
 
   const resetSubtaskForm = (closeForm = true) => {
     setSubtaskTitle("");
@@ -331,15 +414,41 @@ const TaskDetails = () => {
           assignedTo: subtaskAssignee,
         });
         const updated = response.subtask;
-        setSubtasks((prev) => prev.map((item) =>
-          (item.id || item._id) === editingSubtaskId ? updated : item
-        ));
+       setSubtasks((prev) => {
+  const updatedSubtasks = prev.map((item) =>
+    (item.id || item._id) === editingSubtaskId ? updated : item
+  );
+
+  const cached = taskDetailsCache.get(currentTaskId);
+
+  if (cached) {
+    taskDetailsCache.set(currentTaskId, {
+      ...cached,
+      subtasks: updatedSubtasks,
+    });
+  }
+
+  return updatedSubtasks;
+});
       } else {
         const response = await createSubtask(task.id, {
           title: subtaskTitle.trim(),
           assignedTo: subtaskAssignee,
         });
-        setSubtasks((prev) => [...prev, response.subtask]);
+        setSubtasks((prev) => {
+  const updatedSubtasks = [...prev, response.subtask];
+
+  const cached = taskDetailsCache.get(currentTaskId);
+
+  if (cached) {
+    taskDetailsCache.set(currentTaskId, {
+      ...cached,
+      subtasks: updatedSubtasks,
+    });
+  }
+
+  return updatedSubtasks;
+});
       }
       const successMessage = editingSubtaskId ? "Subtask updated successfully!" : "Subtask created successfully!";
       // Keep the modal open so the success banner is shown
@@ -357,39 +466,72 @@ const TaskDetails = () => {
   };
 
   const handleSubtaskToggle = async (subId) => {
-    const current = subtasks.find((s) => (s.id || s._id) === subId);
-    if (!current) return;
+  const current = subtasks.find((s) => (s.id || s._id) === subId);
+  if (!current) return;
 
-    try {
-      const response = await updateSubtask(task.id, subId, {
-        completed: !current.completed,
-      });
-      setSubtasks((prev) => prev.map((item) =>
-        (item.id || item._id) === subId ? { ...item, ...response.subtask } : item
-      ));
-    } catch (error) {
-      console.error("Error updating subtask:", error);
-      alert(error?.message || "Unable to update subtask.");
-    }
-  };
+  try {
+    const response = await updateSubtask(task.id, subId, {
+      completed: !current.completed,
+    });
+
+    setSubtasks((prev) => {
+      const updatedSubtasks = prev.map((item) =>
+        (item.id || item._id) === subId
+          ? { ...item, ...response.subtask }
+          : item
+      );
+
+      const cached = taskDetailsCache.get(currentTaskId);
+
+      if (cached) {
+        taskDetailsCache.set(currentTaskId, {
+          ...cached,
+          subtasks: updatedSubtasks,
+        });
+      }
+
+      return updatedSubtasks;
+    });
+  } catch (error) {
+    console.error("Error updating subtask:", error);
+  }
+};
 
   const handleDeleteSubtask = async (subId) => {
-    if (currentUserRole !== "projectmanager") {
-      alert("Access Denied. Only Project Managers can delete subtasks.");
-      return;
-    }
+  if (currentUserRole !== "projectmanager") {
+    alert("Access Denied. Only Project Managers can delete subtasks.");
+    return;
+  }
 
-    const confirmed = window.confirm("Are you sure you want to delete this subtask?");
-    if (!confirmed) return;
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this subtask?"
+  );
 
-    try {
-      await deleteSubtask(task.id, subId);
-      setSubtasks((prev) => prev.filter((item) => (item.id || item._id) !== subId));
-    } catch (error) {
-      console.error("Error deleting subtask:", error);
-      alert(error?.message || "Unable to delete subtask.");
-    }
-  };
+  if (!confirmed) return;
+
+  try {
+    await deleteSubtask(task.id, subId);
+
+    setSubtasks((prev) => {
+      const updatedSubtasks = prev.filter(
+        (item) => (item.id || item._id) !== subId
+      );
+
+      const cached = taskDetailsCache.get(currentTaskId);
+
+      if (cached) {
+        taskDetailsCache.set(currentTaskId, {
+          ...cached,
+          subtasks: updatedSubtasks,
+        });
+      }
+
+      return updatedSubtasks;
+    });
+  } catch (error) {
+    console.error("Error deleting subtask:", error);
+  }
+};
 const handleMemberToggle = (member) => {
     setTask((prev) => {
       const memberId = String(member._id);

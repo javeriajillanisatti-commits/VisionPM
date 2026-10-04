@@ -1,5 +1,5 @@
 import { useLiveTick } from "../../hooks/useLiveRefresh";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import StatsCard from "../../components/cards/StatsCard";
 import StatusProgressCard from "../../components/admin/StatusProgressCard";
 import TaskDeadlineChart from "../../components/cards/dashboard/TaskDeadlineChart";
@@ -22,6 +22,7 @@ const initialDashboard = {
   projectProgressData: [],
   recentProjects: [],
 };
+const dashboardCache = new Map();
 
 const defaultGhostData = [
   { name: "Project 1", progress: 0 },
@@ -54,6 +55,7 @@ const AdminDashboard = () => {
   const { isDarkMode } = useTheme();
   const [dashboard, setDashboard] = useState(initialDashboard);
   const [loading, setLoading] = useState(true);
+  const hasLoadedOnce = useRef(false);
   const workspaceId = activeWorkspace?._id || null;
 
   const sectionHeading = `text-lg sm:text-xl lg:text-2xl font-bold tracking-tight ${
@@ -65,29 +67,51 @@ const AdminDashboard = () => {
       ? "bg-[#11182B] border-[#263149]"
       : "bg-white border-gray-100"
   }`;
+useEffect(() => {
+  let mounted = true;
 
-  useEffect(() => {
-    let mounted = true;
+  const cacheKey = workspaceId || "all";
+  const cachedDashboard = dashboardCache.get(cacheKey);
 
-    const load = async () => {
-      try {
+  if (cachedDashboard) {
+    setDashboard(cachedDashboard);
+    setLoading(false);
+    hasLoadedOnce.current = true;
+  }
+
+  const load = async () => {
+    try {
+      if (!hasLoadedOnce.current) {
         setLoading(true);
-        setDashboard(initialDashboard);
-        const data = await getDashboardData(workspaceId);
-        if (mounted) setDashboard(normalizeDashboard(data));
-      } catch (error) {
-        console.error("Dashboard data loading error:", error);
-        if (mounted) setDashboard(initialDashboard);
-      } finally {
-        if (mounted) setLoading(false);
       }
-    };
 
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [workspaceId, liveTick]);
+      const data = await getDashboardData(workspaceId);
+      const normalizedData = normalizeDashboard(data);
+
+      if (mounted) {
+        setDashboard(normalizedData);
+        dashboardCache.set(cacheKey, normalizedData);
+      }
+    } catch (error) {
+      console.error("Dashboard data loading error:", error);
+
+      if (mounted && !cachedDashboard) {
+        setDashboard(initialDashboard);
+      }
+    } finally {
+      if (mounted) {
+        setLoading(false);
+        hasLoadedOnce.current = true;
+      }
+    }
+  };
+
+  load();
+
+  return () => {
+    mounted = false;
+  };
+}, [workspaceId, liveTick]);
 
   const totalProjects = dashboard.projects;
   const percentage = key =>

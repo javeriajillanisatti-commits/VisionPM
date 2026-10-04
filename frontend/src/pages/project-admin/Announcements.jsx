@@ -2,12 +2,18 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import AnnouncementButton from "../../components/buttons/AnnouncementButton";
 import AnnouncementPanel from "../../components/admin/AnnouncementPanel";
 
 const Announcements = () => {
   const { isDarkMode } = useTheme();
   const navigate = useNavigate();
+
+  const liveTick = useLiveTick({
+    resources: ["announcements"],
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (

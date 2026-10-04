@@ -42,28 +42,49 @@ const CustomDropdown = ({ value, onChange, options, isDarkMode }) => {
     </div>
   );
 };
+const tmReportCache = new Map();
 
 const TMReport = () => {
   const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
   const { isDarkMode } = useTheme();
-  const [myTasks, setMyTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = "tm-report-tasks";
+const cachedTasks = tmReportCache.get(cacheKey);
+
+const [myTasks, setMyTasks] = useState(cachedTasks || []);
+const [loading, setLoading] = useState(!cachedTasks);
   const [selectedProjectId, setSelectedProjectId] = useState("All");
   const [dateFilterType, setDateFilterType] = useState("All Time");
+useEffect(() => {
+  const cachedData = tmReportCache.get(cacheKey);
 
-  // Load member tasks
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        setMyTasks((await getMyTasks()).tasks || []);
-      } catch (error) {
-        console.error("Error fetching tasks for report:", error);
-      } finally {
-        setLoading(false);
+  if (cachedData) {
+    setMyTasks(cachedData);
+    setLoading(false);
+  }
+
+  const fetchTasks = async () => {
+    try {
+      if (!cachedData) {
+        setLoading(true);
       }
-    };
-    fetchTasks();
-  }, [liveTick]);
+
+      const freshTasks = (await getMyTasks()).tasks || [];
+
+      tmReportCache.set(cacheKey, freshTasks);
+      setMyTasks(freshTasks);
+    } catch (error) {
+      console.error("Error fetching tasks for report:", error);
+
+      if (!cachedData) {
+        setMyTasks([]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchTasks();
+}, [liveTick]);
   // Build project list
   const projectsMap = new Map();
   myTasks.forEach(task => {

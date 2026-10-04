@@ -20,6 +20,7 @@ import ProjectAttentionCenter from "../../components/admin/ProjectAttentionCente
 import { useTheme } from "../../context/ThemeContext";
 
 const PER_PAGE = 9;
+const adminProjectsCache = new Map();
 
 const AdminProjects = () => {
   const liveTick = useLiveTick({ resources: ["projects", "tasks", "workspaces"] });
@@ -28,16 +29,16 @@ const AdminProjects = () => {
   const { isDarkMode: dark } = useTheme();
   const descRef = useRef(null);
   const sortRef = useRef(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("");
-  const [projects, setProjects] = useState([]);
-  const [sortOpen, setSortOpen] = useState(false);
-  const [activeWorkspace, setActiveWorkspace] = useState(null);
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState(workspaceId || null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState("grid");
-  const [loading, setLoading] = useState(true);
-  const [workspaceReady, setWorkspaceReady] = useState(false);
+ const [searchTerm, setSearchTerm] = useState("");
+const [sortBy, setSortBy] = useState("");
+const [projects, setProjects] = useState([]);
+const [sortOpen, setSortOpen] = useState(false);
+const [activeWorkspace, setActiveWorkspace] = useState(null);
+const [currentWorkspaceId, setCurrentWorkspaceId] = useState(workspaceId || null);
+const [currentPage, setCurrentPage] = useState(1);
+const [viewMode, setViewMode] = useState("grid");
+const [loading, setLoading] = useState(true);
+const [workspaceReady, setWorkspaceReady] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showDesc, setShowDesc] = useState(false);
   const [longDesc, setLongDesc] = useState(false);
@@ -120,41 +121,66 @@ const AdminProjects = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchProjects = useCallback(async () => {
-    try {
-      setLoading(true);
-      const token =
-        sessionStorage.getItem("token") || localStorage.getItem("token");
+const fetchProjects = useCallback(async () => {
+  try {
+    const cacheKey = currentWorkspaceId || "all";
+    const cachedProjects = adminProjectsCache.get(cacheKey);
 
-      if (!token) {
-        setProjects([]);
-        return;
-      }
-
-      const { data } = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/projects/workspace/${currentWorkspaceId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setProjects(Array.isArray(data) ? data : data?.projects || []);
-      setCurrentPage(1);
-    } catch (error) {
-      console.error("Error fetching projects:", error.response?.data || error);
-      setProjects([]);
-    } finally {
-      setLoading(false);
+    if (!hasLoadedOnce) {
+      setLoading(!cachedProjects);
     }
-  }, [currentWorkspaceId]);
 
-  useEffect(() => {
-    if (!workspaceReady) return;
-    if (!currentWorkspaceId) {
+    const token =
+      sessionStorage.getItem("token") || localStorage.getItem("token");
+
+    if (!token) {
       setProjects([]);
-      setLoading(false);
       return;
     }
-    fetchProjects();
-  }, [currentWorkspaceId, workspaceReady, fetchProjects, liveTick]);
+
+    const { data } = await axios.get(
+      `${process.env.REACT_APP_API_URL}/api/projects/workspace/${currentWorkspaceId}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    const freshProjects = Array.isArray(data)
+      ? data
+      : data?.projects || [];
+
+    setProjects(freshProjects);
+    adminProjectsCache.set(cacheKey, freshProjects);
+    setCurrentPage(1);
+  } catch (error) {
+    console.error("Error fetching projects:", error.response?.data || error);
+
+    if (!adminProjectsCache.get(currentWorkspaceId || "all")) {
+      setProjects([]);
+    }
+  } finally {
+    setLoading(false);
+    setHasLoadedOnce(true);
+  }
+}, [currentWorkspaceId, hasLoadedOnce]);
+useEffect(() => {
+  if (!workspaceReady) return;
+
+  if (!currentWorkspaceId) {
+    setProjects([]);
+    setLoading(false);
+    return;
+  }
+
+  const cacheKey = currentWorkspaceId || "all";
+  const cachedProjects = adminProjectsCache.get(cacheKey);
+
+  if (cachedProjects) {
+    setProjects(cachedProjects);
+    setLoading(false);
+    setHasLoadedOnce(true);
+  }
+
+  fetchProjects();
+}, [currentWorkspaceId, workspaceReady, fetchProjects, liveTick]);
 
   const handleDeleteProject = async (id, count = 0) => {
     const message = count

@@ -25,6 +25,7 @@ const StatusDropdown = ({ value, onChange, isDarkMode }) => {
     { value: "In Progress", label: "In Progress" },
     { value: "Completed", label: "Completed" },
   ];
+  const taskDetailsCache = new Map();
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -95,49 +96,58 @@ const TaskDetails = () => {
   const { taskId } = useParams();
   const { isDarkMode } = useTheme();
    const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
-  const [task, setTask] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const cachedTask = taskDetailsCache.get(taskId);
+
+const [task, setTask] = useState(cachedTask || null);
+const [loading, setLoading] = useState(!cachedTask);
   const statusRef = useRef(null);
-  // Fetch task
-  useEffect(() => {
-    const fetchTask = async () => {
-      try {
-        const data = await getTaskById(taskId); setTask(data.task || data);
-      } catch (error) {
-        console.error("Error fetching task:", error);
-      } finally { setLoading(false); }
-    };
-    fetchTask();
-  }, [taskId, liveTick]);
-  // Keep task data synchronized
-    useEffect(() => {
-    if (!taskId) return;
+  // Fetch and synchronize task
+useEffect(() => {
+  if (!taskId) {
+    setTask(null);
+    setLoading(false);
+    return;
+  }
 
-    let cancelled = false;
+  const cachedData = taskDetailsCache.get(taskId);
 
-    const syncTask = async () => {
-      try {
-        const data = await getTaskById(taskId);
-        const liveTask = data?.task || data;
+  if (cachedData) {
+    setTask(cachedData);
+    setLoading(false);
+  } else {
+    setLoading(true);
+  }
 
-        if (!cancelled && liveTask) {
-          setTask((prev) => ({
-            ...(prev || {}),
-            ...liveTask,
-            subtasks: liveTask.subtasks || [],
-          }));
-        }
-      } catch (error) {
-        console.error("Error syncing TM task:", error);
+  let cancelled = false;
+
+  const fetchTask = async () => {
+    try {
+      const data = await getTaskById(taskId);
+      const freshTask = data?.task || data;
+
+      if (!cancelled && freshTask) {
+        taskDetailsCache.set(taskId, freshTask);
+        setTask(freshTask);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching task:", error);
 
-    syncTask();
+      if (!cancelled && !cachedData) {
+        setTask(null);
+      }
+    } finally {
+      if (!cancelled) {
+        setLoading(false);
+      }
+    }
+  };
 
-    return () => {
-      cancelled = true;
-    };
-  }, [taskId]);
+  fetchTask();
+
+  return () => {
+    cancelled = true;
+  };
+}, [taskId, liveTick]);
   
   // Open status selector from event
   useEffect(() => {
@@ -162,13 +172,26 @@ const TaskDetails = () => {
     } catch (error) { console.error("Error completing subtask:", error); alert(error?.message || "Unable to complete subtask."); }
   };
 
-  // Update task status
-  const handleStatusUpdate = async (newStatus) => {
-    try {
-      setTask((prev) => ({ ...prev, status: newStatus, }));
-      await updateTask(taskId, { status: newStatus, });
-    } catch (error) { console.error("Error updating task status:", error); }
-  };
+ const handleStatusUpdate = async (newStatus) => {
+  try {
+    const updatedTask = {
+      ...task,
+      status: newStatus,
+    };
+
+    setTask(updatedTask);
+    taskDetailsCache.set(taskId, updatedTask);
+
+    await updateTask(taskId, {
+      status: newStatus,
+    });
+  } catch (error) {
+    console.error(
+      "Error updating task status:",
+      error
+    );
+  }
+};
 
   // Shared styles
   const sectionCardStyle = `rounded-2xl border shadow-sm transition-all duration-200 ${isDarkMode ? "bg-[#11182B] border-[#263149] hover:border-[#33466A]" : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-md"}`;

@@ -9,66 +9,124 @@ import ProjectTimeline from "../../components/cards/dashboard/ProjectTimeline";
 import PMProjectPipeline from "../../components/cards/dashboard/PMProjectsPipeline";
 import { FolderKanban,ListTodo, CheckCircle2, CircleDot, Activity } from "lucide-react";
 import axios from "axios";
+const dashboardCache = new Map();
 
 const Dashboard = () => {
   const liveTick = useLiveTick({ resources: ["dashboard", "projects", "tasks"] });
   const { activeWorkspace } = useWorkspace(); 
   const { isDarkMode } = useTheme();
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalProjects: 0, totalTasks: 0, todoCount: 0, progressCount: 0, doneCount: 0, priorityData: [
+
+  const targetWorkspaceId = activeWorkspace?.id || activeWorkspace?._id;
+  const cacheKey = targetWorkspaceId || "all";
+  const cachedStats = dashboardCache.get(cacheKey);
+
+  const [loading, setLoading] = useState(!cachedStats);
+  const [stats, setStats] = useState(cachedStats || {
+    totalProjects: 0,
+    totalTasks: 0,
+    todoCount: 0,
+    progressCount: 0,
+    doneCount: 0,
+    priorityData: [
       { name: "High Priority", value: 0 },
       { name: "Medium Priority", value: 0 },
       { name: "Low Priority", value: 0 }
-    ], projectsProgress: [], trendData: [], recentProjects: [] });
+    ],
+    projectsProgress: [],
+    trendData: [],
+    recentProjects: []
+  });
+
   const dashboardRequestInFlight = useRef(false);
-  useEffect(() => {
-  const targetWorkspaceId = activeWorkspace?.id || activeWorkspace?._id;
+useEffect(() => {
   const token = sessionStorage.getItem("token");
-    if (!targetWorkspaceId || !token || token === "null" || token === "undefined") {
-      setLoading(false);
-      return undefined;
+
+  if (
+    !targetWorkspaceId ||
+    !token ||
+    token === "null" ||
+    token === "undefined"
+  ) {
+    setLoading(false);
+    return undefined;
+  }
+
+  let cancelled = false;
+
+  const fetchDashboardLiveStats = async ({ showLoader = false } = {}) => {
+    if (cancelled || dashboardRequestInFlight.current) return;
+
+    dashboardRequestInFlight.current = true;
+
+    const cachedData = dashboardCache.get(cacheKey);
+
+    if (showLoader && !cachedData) {
+      setLoading(true);
     }
-    let cancelled = false;
-  
-    const fetchDashboardLiveStats = async ({ showLoader = false } = {}) => {
-      if (cancelled || dashboardRequestInFlight.current) return;
-      dashboardRequestInFlight.current = true;
-      if (showLoader) setLoading(true);
-      try {
-        const response = await axios.get(
-         `${process.env.REACT_APP_API_URL}/api/dashboard/stats/${targetWorkspaceId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (!cancelled && response.data) {
-          setStats(response.data);
+
+    try {
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_URL}/api/dashboard/stats/${targetWorkspaceId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
-      } catch (err) {
-        if (!cancelled) {
-          console.error("Dashboard Stats Fetch Error:", err);
+      );
+
+      if (!cancelled && response.data) {
+        setStats(response.data);
+        dashboardCache.set(cacheKey, response.data);
+      }
+    } catch (err) {
+      if (!cancelled) {
+        console.error("Dashboard Stats Fetch Error:", err);
+
+        const cachedData = dashboardCache.get(cacheKey);
+
+        if (cachedData) {
+          setStats(cachedData);
         }
-      } finally {
-        dashboardRequestInFlight.current = false;
-        if (showLoader && !cancelled) setLoading(false);
       }
-    };
-    // data load for first time
-    fetchDashboardLiveStats({ showLoader: true });
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        fetchDashboardLiveStats();
-      }
-    };
-    const handleWindowFocus = () => {fetchDashboardLiveStats(); };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleWindowFocus)
-    return () => {
-      cancelled = true;
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleWindowFocus);
+    } finally {
       dashboardRequestInFlight.current = false;
-    };
-  }, [activeWorkspace, liveTick]);
+
+      if (!cancelled) {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Cached data already exists, so update silently
+  if (dashboardCache.has(cacheKey)) {
+    setStats(dashboardCache.get(cacheKey));
+    setLoading(false);
+    fetchDashboardLiveStats();
+  } else {
+    // First load can show loading
+    fetchDashboardLiveStats({ showLoader: true });
+  }
+
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "visible") {
+      fetchDashboardLiveStats();
+    }
+  };
+
+  const handleWindowFocus = () => {
+    fetchDashboardLiveStats();
+  };
+
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("focus", handleWindowFocus);
+
+  return () => {
+    cancelled = true;
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.removeEventListener("focus", handleWindowFocus);
+    dashboardRequestInFlight.current = false;
+  };
+}, [targetWorkspaceId, cacheKey, liveTick]);
   if (loading) {
     return (
       <div className="py-32 text-center text-gray-400 font-bold animate-pulse text-sm uppercase tracking-widest">

@@ -10,45 +10,80 @@ import ContributionDetails from "../../components/contribution/ContributionDetai
 import { useTheme } from "../../context/ThemeContext";
 
 const emptyProfile = { fullName: "", profilePic: "" };
+const tmContributionProjectsCache = new Map();
+const tmContributionDataCache = new Map();
 
 const TMContribution = () => {
   const liveTick = useLiveTick({ resources: ["projects", "tasks"] });
   const { isDarkMode } = useTheme();
   const navigate = useNavigate();
-  const [projects, setProjects] = useState([]);
+  const cachedProjects = tmContributionProjectsCache.get("my-projects");
+
+const [projects, setProjects] = useState(cachedProjects || []);
   const [selectedProjectId, setSelectedProjectId] = useState(
     () => sessionStorage.getItem("tmContributionProjectId") || ""
   );
-  const [profile, setProfile] = useState(emptyProfile);
-  const [tasks, setTasks] = useState([]);
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const contributionCacheKey =
+  selectedProjectId || "no-project";
+
+const cachedContribution =
+  tmContributionDataCache.get(contributionCacheKey);
+
+const [profile, setProfile] = useState(
+  cachedContribution?.profile || emptyProfile
+);
+const [tasks, setTasks] = useState(
+  cachedContribution?.tasks || []
+);
+const [selectedTask, setSelectedTask] = useState(null);
+const [loading, setLoading] = useState(!cachedContribution);
   const [error, setError] = useState("");
 
-  // Load member projects
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setError("");
-        const list = (await getMyProjects()).projects || [];
-        setProjects(list);
+  const fetchProjects = async () => {
+    const cachedData = tmContributionProjectsCache.get("my-projects");
 
-        const saved = sessionStorage.getItem("tmContributionProjectId");
-        const exists = list.some(project => project._id === saved);
+    if (cachedData) {
+      setProjects(cachedData);
+    }
 
-        if (exists) setSelectedProjectId(saved);
-        else if (list.length) {
-          setSelectedProjectId(list[0]._id);
-          sessionStorage.setItem("tmContributionProjectId", list[0]._id);
-        }
-      } catch (err) {
-        console.error("Error fetching projects:", err);
-        setError("Unable to load your projects.");
+    try {
+      setError("");
+
+      const list = (await getMyProjects()).projects || [];
+
+      tmContributionProjectsCache.set("my-projects", list);
+      setProjects(list);
+
+      const saved = sessionStorage.getItem(
+        "tmContributionProjectId"
+      );
+
+      const exists = list.some(
+        (project) => project._id === saved
+      );
+
+      if (exists) {
+        setSelectedProjectId(saved);
+      } else if (list.length) {
+        setSelectedProjectId(list[0]._id);
+        sessionStorage.setItem(
+          "tmContributionProjectId",
+          list[0]._id
+        );
       }
-    };
+    } catch (err) {
+      console.error("Error fetching projects:", err);
+      setError("Unable to load your projects.");
 
-    fetchProjects();
-  }, []);
+      if (!cachedData) {
+        setProjects([]);
+      }
+    }
+  };
+
+  fetchProjects();
+}, []);
 
   // Load contribution data
   useEffect(() => {

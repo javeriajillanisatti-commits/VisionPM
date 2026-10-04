@@ -17,6 +17,7 @@ import TaskCard from "../../components/cards/TaskCard";
 import TaskInsights from "../../components/admin/TaskInsights";
 import { useTheme } from "../../context/ThemeContext";
 
+const adminTasksCache = new Map();
 const AdminTasks = () => {
   const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
   const { projectId } = useParams();
@@ -29,6 +30,7 @@ const AdminTasks = () => {
   const [project, setProject] = useState(null);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [viewMode, setViewMode] = useState("grid");
   const [currentPage, setCurrentPage] = useState(1);
   const [showTaskInsights, setShowTaskInsights] = useState(false);
@@ -43,58 +45,105 @@ const AdminTasks = () => {
   const perPage = 9;
 
   const fetchProject = useCallback(async () => {
-    if (!token || !projectId) return setProject(null);
+  if (!token || !projectId) {
+    setProject(null);
+    return;
+  }
 
-    try {
-      const { data } = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/projects/${projectId}`,
-        apiConfig
-      );
-      setProject(data?.project || data?.data || data || null);
-    } catch (error) {
-      console.error("Error fetching project:", error.response?.data || error);
-      setProject(null);
-    }
-  }, [token, projectId, apiConfig]);
+  try {
+    const { data } = await axios.get(
+      `${process.env.REACT_APP_API_URL}/api/projects/${projectId}`,
+      apiConfig
+    );
 
-  const fetchTasks = useCallback(async () => {
-    if (!token) {
-      console.error("No authentication token found.");
-      setTasks([]);
-      return setLoading(false);
-    }
+    setProject(data?.project || data?.data || data || null);
+  } catch (error) {
+    console.error("Error fetching project:", error.response?.data || error);
+    setProject(null);
+  }
+}, [token, projectId, apiConfig]);
 
-    try {
+ const fetchTasks = useCallback(async () => {
+  if (!token) {
+    console.error("No authentication token found.");
+    setTasks([]);
+    setLoading(false);
+    return;
+  }
+
+  try {
+    const cacheKey = projectId;
+    const cachedData = adminTasksCache.get(cacheKey);
+
+    if (!hasLoadedOnce && !cachedData) {
       setLoading(true);
-      const { data } = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/tasks/project/${projectId}`,
-        apiConfig
-      );
-
-      const list = data?.tasks || data || [];
-      setTasks(list);
-      setCurrentPage(1);
-
-      const taskProject = list[0]?.project;
-      if (taskProject && typeof taskProject === "object")
-        setProject(current => current || taskProject);
-    } catch (error) {
-      console.error("Error fetching tasks:", error.response?.data || error);
-      setTasks([]);
-    } finally {
-      setLoading(false);
     }
-  }, [token, projectId, apiConfig]);
+
+    const { data } = await axios.get(
+      `${process.env.REACT_APP_API_URL}/api/tasks/project/${projectId}`,
+      apiConfig
+    );
+
+    const list = data?.tasks || data || [];
+    const freshProject = list[0]?.project;
+
+    setTasks(list);
+
+    if (freshProject && typeof freshProject === "object") {
+      setProject(current => current || freshProject);
+    }
+
+    adminTasksCache.set(cacheKey, {
+      tasks: list,
+      project: freshProject && typeof freshProject === "object"
+        ? freshProject
+        : null,
+    });
+
+    setCurrentPage(1);
+  } catch (error) {
+    console.error("Error fetching tasks:", error.response?.data || error);
+
+    const cachedData = adminTasksCache.get(projectId);
+
+    if (cachedData) {
+      setTasks(cachedData.tasks);
+      if (cachedData.project) {
+        setProject(cachedData.project);
+      }
+    } else {
+      setTasks([]);
+    }
+  } finally {
+    setLoading(false);
+    setHasLoadedOnce(true);
+  }
+}, [token, projectId, apiConfig, hasLoadedOnce]);
 
   useEffect(() => {
-    if (!projectId) {
-      setTasks([]);
-      setLoading(false);
-      return;
+  if (!projectId) {
+    setTasks([]);
+    setProject(null);
+    setLoading(false);
+    return;
+  }
+
+  const cachedData = adminTasksCache.get(projectId);
+
+  if (cachedData) {
+    setTasks(cachedData.tasks);
+    
+    if (cachedData.project) {
+      setProject(cachedData.project);
     }
-    fetchProject();
-    fetchTasks();
-  }, [projectId, fetchProject, fetchTasks, liveTick]);
+
+    setLoading(false);
+    setHasLoadedOnce(true);
+  }
+
+  fetchProject();
+  fetchTasks();
+}, [projectId, fetchProject, fetchTasks, liveTick]);
 
   useEffect(() => setCurrentPage(1), [searchTerm, sortBy, viewMode]);
 

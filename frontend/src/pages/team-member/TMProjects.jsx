@@ -16,7 +16,7 @@ import {
 import { getMyProjects } from "../../services/memberService";
 import ProjectCard from "../../components/cards/ProjectCard";
 import { useTheme } from "../../context/ThemeContext";
-
+const tmProjectsCache = new Map();
 const SORT_OPTIONS = [
   { value: "", label: "Sort By" },
   { value: "date-newest", label: "Newest First" },
@@ -104,8 +104,15 @@ const TMProjects = () => {
   const { isDarkMode } = useTheme();
   const { state } = useLocation();
   const liveTick = useLiveTick({ resources: ["projects", "tasks"] });
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const currentWorkspaceId = state?._id || state?.id || null;
+const workspaceName = state?.name || "Workspace";
+const workspaceDesc = state?.description || "No description available.";
+
+const cacheKey = currentWorkspaceId || "all";
+const cachedProjects = tmProjectsCache.get(cacheKey);
+
+const [projects, setProjects] = useState(cachedProjects || []);
+const [loading, setLoading] = useState(!cachedProjects);
   const [showFullDesc, setShowFullDesc] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState("grid");
@@ -114,20 +121,25 @@ const TMProjects = () => {
 
   const PROJECTS_PER_PAGE = 9;
 
-  const currentWorkspaceId = state?._id || state?.id || null;
-  const workspaceName = state?.name || "Workspace";
-  const workspaceDesc = state?.description || "No description available.";
 
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setLoading(true);
 
-        const data = await getMyProjects();
-        const allProjects = Array.isArray(data?.projects) ? data.projects : [];
+ useEffect(() => {
+  const cachedData = tmProjectsCache.get(cacheKey);
 
-        const workspaceProjects = currentWorkspaceId
-          ? allProjects.filter(project => {
+  if (cachedData) {
+    setProjects(cachedData);
+    setLoading(false);
+  }
+
+  const fetchProjects = async () => {
+    try {
+      const data = await getMyProjects();
+      const allProjects = Array.isArray(data?.projects)
+        ? data.projects
+        : [];
+
+      const workspaceProjects = currentWorkspaceId
+        ? allProjects.filter(project => {
             const id =
               project.workspace?._id ||
               project.workspace?.id ||
@@ -135,19 +147,23 @@ const TMProjects = () => {
 
             return String(id) === String(currentWorkspaceId);
           })
-          : allProjects;
+        : allProjects;
 
-        setProjects(workspaceProjects);
-      } catch (error) {
-        console.error("Error fetching projects:", error);
+      tmProjectsCache.set(cacheKey, workspaceProjects);
+      setProjects(workspaceProjects);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+
+      if (!cachedData) {
         setProjects([]);
-      } finally {
-        setLoading(false);
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchProjects();
-  }, [currentWorkspaceId, liveTick]);
+  fetchProjects();
+}, [currentWorkspaceId, cacheKey, liveTick]);
 
   const filteredProjects = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();

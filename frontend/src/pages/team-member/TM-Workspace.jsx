@@ -5,40 +5,68 @@ import { getMyWorkspace, getMyProjects, getMyTasks } from "../../services/member
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { AlertCircle, User } from "lucide-react";
-
+const memberWorkspaceCache = new Map();
 const MemberWorkspace = () => {
   const liveTick = useLiveTick({ resources: ["workspaces", "projects", "tasks"] });
   const { isDarkMode } = useTheme();
   const { user } = useAuth();
-  const [workspace, setWorkspace] = useState(null);
-  const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [visibleTaskCount, setVisibleTaskCount] = useState(5);
-  const [activeTab, setActiveTab] = useState(null);
-  const [showFullDescription, setShowFullDescription] = useState(false);
-  const [loading, setLoading] = useState(true);
+const cacheKey = "member-workspace";
+const cachedData = memberWorkspaceCache.get(cacheKey);
+
+const [workspace, setWorkspace] = useState(cachedData?.workspace || null);
+const [projects, setProjects] = useState(cachedData?.projects || []);
+const [tasks, setTasks] = useState(cachedData?.tasks || []);
+const [visibleTaskCount, setVisibleTaskCount] = useState(5);
+const [activeTab, setActiveTab] = useState(null);
+const [showFullDescription, setShowFullDescription] = useState(false);
+const [loading, setLoading] = useState(!cachedData);
 
   // Fetch workspace data
-  useEffect(() => {
-    const fetchWorkspaceData = async () => {
-      try {
-        setLoading(true);
-        const [workspaceResponse, projectsResponse, tasksResponse] = await Promise.all([
+useEffect(() => {
+  const cachedData = memberWorkspaceCache.get(cacheKey);
+
+  if (cachedData) {
+    setWorkspace(cachedData.workspace || null);
+    setProjects(cachedData.projects || []);
+    setTasks(cachedData.tasks || []);
+    setLoading(false);
+  }
+
+  const fetchWorkspaceData = async () => {
+    try {
+      const [workspaceResponse, projectsResponse, tasksResponse] =
+        await Promise.all([
           getMyWorkspace(),
           getMyProjects(),
           getMyTasks(),
         ]);
-        setWorkspace(workspaceResponse?.workspace || null);
-        setProjects(projectsResponse?.projects || []);
-        setTasks(tasksResponse?.tasks || []);
-      } catch (error) {
-        console.error("Error fetching Team Member workspace:", error);
-      } finally {
-        setLoading(false);
+
+      const freshData = {
+        workspace: workspaceResponse?.workspace || null,
+        projects: projectsResponse?.projects || [],
+        tasks: tasksResponse?.tasks || [],
+      };
+
+      memberWorkspaceCache.set(cacheKey, freshData);
+
+      setWorkspace(freshData.workspace);
+      setProjects(freshData.projects);
+      setTasks(freshData.tasks);
+    } catch (error) {
+      console.error("Error fetching Team Member workspace:", error);
+
+      if (!cachedData) {
+        setWorkspace(null);
+        setProjects([]);
+        setTasks([]);
       }
-    };
-    fetchWorkspaceData();
-  }, [liveTick]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchWorkspaceData();
+}, [liveTick]);
 
   // Map projects for quick task lookup
   const projectMap = useMemo(

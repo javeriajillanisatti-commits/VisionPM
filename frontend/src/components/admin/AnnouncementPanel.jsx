@@ -1,15 +1,19 @@
+import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { X, Trash2, Paperclip, Download } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import AnnouncementForm from "../forms/AnnouncementForm";
-
+const announcementCache = new Map();
 const API_BASE = process.env.REACT_APP_API_URL;
 
 const AnnouncementPanel = ({ isModalOpen, setIsModalOpen }) => {
   const { isDarkMode } = useTheme();
   const { activeWorkspace } = useWorkspace();
+  const liveTick = useLiveTick({
+  resources: ["announcements"],
+});
   const [announcements, setAnnouncements] = useState([]);
   const [expandedMessages, setExpandedMessages] = useState({});
   const [expandedTitles, setExpandedTitles] = useState({});
@@ -20,6 +24,7 @@ const AnnouncementPanel = ({ isModalOpen, setIsModalOpen }) => {
   const [error, setError] = useState("");
   const titleRefs = useRef({});
   const messageRefs = useRef({});
+  const hasLoadedOnce = useRef(false);
   const workspaceId = activeWorkspace?._id || activeWorkspace?.id;
   const getToken = () => sessionStorage.getItem("token") || localStorage.getItem("token");
 
@@ -47,26 +52,72 @@ const AnnouncementPanel = ({ isModalOpen, setIsModalOpen }) => {
   }, [announcements]);
 
   // Load workspace announcements
-  const fetchAnnouncements = useCallback(async () => {
-    if (!workspaceId) return setAnnouncements([]);
+ const fetchAnnouncements = useCallback(async (showLoader = true) => {
+  if (!workspaceId) {
+    setAnnouncements([]);
+    setLoadingAnnouncements(false);
+    return;
+  }
 
-    try {
+  try {
+    const cachedAnnouncements = announcementCache.get(workspaceId);
+
+    if (showLoader && !cachedAnnouncements && !hasLoadedOnce.current) {
       setLoadingAnnouncements(true);
-      const { data } = await axios.get(
-        `${API_BASE}/api/announcements/${workspaceId}`,
-        { headers: { Authorization: `Bearer ${getToken()}` } }
-      );
-      setAnnouncements(data.announcements || []);
-    } catch (err) {
-      console.error("Announcement fetch error:", err);
-    } finally {
-      setLoadingAnnouncements(false);
     }
-  }, [workspaceId]);
 
-  useEffect(() => {
-    fetchAnnouncements();
-  }, [workspaceId, fetchAnnouncements]);
+    const { data } = await axios.get(
+      `${API_BASE}/api/announcements/${workspaceId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      }
+    );
+
+    const freshAnnouncements = data.announcements || [];
+
+    setAnnouncements(freshAnnouncements);
+    announcementCache.set(workspaceId, freshAnnouncements);
+  } catch (err) {
+    console.error(
+      "Announcement fetch error:",
+      err.response?.data || err
+    );
+
+    const cachedAnnouncements = announcementCache.get(workspaceId);
+
+    if (cachedAnnouncements) {
+      setAnnouncements(cachedAnnouncements);
+    }
+  } finally {
+    setLoadingAnnouncements(false);
+    hasLoadedOnce.current = true;
+  }
+}, [workspaceId]);
+
+ useEffect(() => {
+  const cachedAnnouncements = workspaceId
+    ? announcementCache.get(workspaceId)
+    : null;
+
+  if (cachedAnnouncements) {
+    setAnnouncements(cachedAnnouncements);
+    setLoadingAnnouncements(false);
+    hasLoadedOnce.current = true;
+
+    fetchAnnouncements(false);
+    return;
+  }
+
+  fetchAnnouncements(true);
+}, [workspaceId, fetchAnnouncements]);
+
+useEffect(() => {
+  if (!hasLoadedOnce.current) return;
+
+  fetchAnnouncements(false);
+}, [liveTick, fetchAnnouncements]);
 
   useEffect(() => {
     if (!announcements.length) return;

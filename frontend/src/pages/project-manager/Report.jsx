@@ -10,17 +10,17 @@ import { getProjectsByWorkspace, getProjectReport } from "../../services/project
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { FolderKanban, CheckCircle2, ListTodo, BarChart3, Filter, FileText, ChevronDown } from "lucide-react";
-
+const reportCache = new Map();
 const Report = () => {
   const liveTick = useLiveTick({ resources: ["projects", "tasks", "users"] });
   const { activeWorkspace } = useWorkspace(); 
   const { isDarkMode } = useTheme();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [projectsList, setProjectsList] = useState([]);
-  const [selectedProjectId, setSelectedProjectId] = useState("All");
-  const [reportType, setReportType] = useState("All");
-  const [allReportsDump, setAllReportsDump] = useState([]);
+const [error, setError] = useState(null);
+const [projectsList, setProjectsList] = useState([]);
+const [selectedProjectId, setSelectedProjectId] = useState("All");
+const [reportType, setReportType] = useState("All");
+const [allReportsDump, setAllReportsDump] = useState([]);
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [isReportDropdownOpen, setIsReportDropdownOpen] = useState(false);
   const normalizeId = (value) => (value == null ? "" : String(value));
@@ -37,72 +37,126 @@ const Report = () => {
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
+useEffect(() => {
+  let cancelled = false;
+  let requestInFlight = false;
 
-  useEffect(() => {
-    let cancelled = false;
-    let requestInFlight = false;
-    
-    const fetchWorkspaceReportsData = async (showLoader = false) => {
-      if (!workspaceIdDependency) {
-        setError("Please select an active workspace to view reports.");
+  const fetchWorkspaceReportsData = async (showLoader = false) => {
+    if (!workspaceIdDependency) {
+      setError("Please select an active workspace to view reports.");
+      setLoading(false);
+      return;
+    }
+
+    const cachedData = reportCache.get(workspaceIdDependency);
+
+    if (cachedData) {
+      setProjectsList(cachedData.projectsList);
+      setAllReportsDump(cachedData.allReportsDump);
+      setLoading(false);
+    } else if (showLoader) {
+      setLoading(true);
+    }
+
+    try {
+      setError(null);
+
+      const workspaceProjectsResponse =
+        await getProjectsByWorkspace(workspaceIdDependency);
+
+      if (cancelled) return;
+
+      const workspaceProjects =
+        workspaceProjectsResponse?.projects ??
+        (Array.isArray(workspaceProjectsResponse)
+          ? workspaceProjectsResponse
+          : []);
+
+      setProjectsList(workspaceProjects);
+
+      if (!workspaceProjects || workspaceProjects.length === 0) {
+        setAllReportsDump([]);
+
+        reportCache.set(workspaceIdDependency, {
+          projectsList: [],
+          allReportsDump: [],
+        });
+
         return;
       }
-      try {
-        if (showLoader) {
-          setLoading(true);
-        }
-        setError(null);
-        const workspaceProjects = await getProjectsByWorkspace(workspaceIdDependency);
-        if (cancelled) return;
-        setProjectsList(workspaceProjects || []);
 
-        if (!workspaceProjects || workspaceProjects.length === 0) {
-          setAllReportsDump([]);
-          if (showLoader) setLoading(false);
-          return;
-        }
+      const reportPromises = workspaceProjects.map((p) =>
+        getProjectReport(p._id || p.id).catch(() => null)
+      );
 
-        // download complete workspace data
-        const reportPromises = workspaceProjects.map(p => getProjectReport(p._id || p.id).catch(() => null));
-        const resolvedReports = await Promise.all(reportPromises);
-        const validReports = resolvedReports.filter(r => r && r.success).map(r => r.data);
-        
-        if (cancelled) return;
-        setAllReportsDump(validReports || []);
+      const resolvedReports = await Promise.all(reportPromises);
 
-      } catch (err) {
-        if (!cancelled) setError("Failed to fetch analytical datasets from database.");
-      } finally {
-        if (showLoader && !cancelled) setLoading(false);
+      const validReports = resolvedReports
+        .filter((r) => r && r.success)
+        .map((r) => r.data);
+
+      if (cancelled) return;
+
+      setAllReportsDump(validReports || []);
+
+      reportCache.set(workspaceIdDependency, {
+        projectsList: workspaceProjects,
+        allReportsDump: validReports || [],
+      });
+    } catch (err) {
+      if (!cancelled) {
+        setError("Failed to fetch analytical datasets from database.");
       }
-    };
-
-    const refreshReport = async () => {
-      if (requestInFlight) return;
-      requestInFlight = true;
-      try {
-        await fetchWorkspaceReportsData(false);
-      } finally {
-        requestInFlight = false;
+    } finally {
+      if (!cancelled) {
+        setLoading(false);
       }
-    };
+    }
+  };
 
+  const refreshReport = async () => {
+    if (requestInFlight) return;
+
+    requestInFlight = true;
+
+    try {
+      await fetchWorkspaceReportsData(false);
+    } finally {
+      requestInFlight = false;
+    }
+  };
+
+  const cachedData = workspaceIdDependency
+    ? reportCache.get(workspaceIdDependency)
+    : null;
+
+  if (cachedData) {
+    setProjectsList(cachedData.projectsList);
+    setAllReportsDump(cachedData.allReportsDump);
+    setLoading(false);
+
+    refreshReport();
+  } else {
     fetchWorkspaceReportsData(true);
-    const handleFocus = () => refreshReport();
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        refreshReport();
-      }
-    };
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+  }
 
-    return () => {
-      cancelled = true;
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [workspaceIdDependency, liveTick]);
+  const handleFocus = () => refreshReport();
+
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "visible") {
+      refreshReport();
+    }
+  };
+
+  window.addEventListener("focus", handleFocus);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  return () => {
+    cancelled = true;
+    window.removeEventListener("focus", handleFocus);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  };
+}, [workspaceIdDependency, liveTick]);;
  
   const getComputedFilteredView = () => {
     const reports = allReportsDump || [];

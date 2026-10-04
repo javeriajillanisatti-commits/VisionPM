@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 
+const workspaceProjectMapCache = new Map();
 const PAGE_SIZE = 5;
 
 const WorkspaceProjectMap = () => {
@@ -17,9 +18,12 @@ const WorkspaceProjectMap = () => {
   const { isDarkMode } = useTheme();
   const { id: workspaceId, name = "Workspace", description = "" } = state;
 
-  const [projects, setProjects] = useState([]);
-  const [expandedProject, setExpandedProject] = useState(null);
-  const [loading, setLoading] = useState(true);
+ const cacheKey = workspaceId || "all";
+const cachedProjects = workspaceProjectMapCache.get(cacheKey);
+
+const [projects, setProjects] = useState(cachedProjects || []);
+const [expandedProject, setExpandedProject] = useState(null);
+const [loading, setLoading] = useState(!cachedProjects);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -29,33 +33,56 @@ const WorkspaceProjectMap = () => {
   const [hasMoreDescription, setHasMoreDescription] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      if (!workspaceId) {
-        setError("Workspace ID is missing.");
-        setLoading(false);
-        return;
-      }
+useEffect(() => {
+  const load = async () => {
+    if (!workspaceId) {
+      setError("Workspace ID is missing.");
+      setLoading(false);
+      return;
+    }
 
-      try {
-        setLoading(true);
-        setError("");
-        const token = sessionStorage.getItem("token");
-        const { data } = await axios.get(
-          `${process.env.REACT_APP_API_URL}/api/workspaces/${workspaceId}/project-map`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setProjects(data?.mapData?.projects || []);
-      } catch (err) {
-        console.error("Workspace Project Map Fetch Error:", err);
-        setError(err.response?.data?.message || "Failed to load workspace project map.");
+    const cacheKey = workspaceId;
+    const cachedData = workspaceProjectMapCache.get(cacheKey);
+
+    if (cachedData) {
+      setProjects(cachedData);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      setError("");
+
+      const token = sessionStorage.getItem("token");
+
+      const { data } = await axios.get(
+        `${process.env.REACT_APP_API_URL}/api/workspaces/${workspaceId}/project-map`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const freshProjects = data?.mapData?.projects || [];
+
+      setProjects(freshProjects);
+      workspaceProjectMapCache.set(cacheKey, freshProjects);
+    } catch (err) {
+      console.error("Workspace Project Map Fetch Error:", err);
+
+      setError(
+        err.response?.data?.message ||
+          "Failed to load workspace project map."
+      );
+
+      if (!cachedData) {
         setProjects([]);
-      } finally {
-        setLoading(false);
       }
-    };
-    load();
-  }, [workspaceId, liveTick]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  load();
+}, [workspaceId, liveTick]);
 
   useEffect(() => {
     setCurrentPage(1);

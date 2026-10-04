@@ -6,49 +6,91 @@ import { AlertTriangle, ArrowRight } from "lucide-react";
 import WorkspaceCard from "../../components/cards/WorkspaceCard";
 import { getAllWorkspaces, getWorkspaceMonitorData } from "../../services/workspaceService";
 import { useWorkspace } from "../../context/WorkspaceContext";
+const workspacesCache = new Map();
+const workspaceMonitorCache = new Map();
 
 const Workspaces = () => {
   const liveTick = useLiveTick({ resources: ["workspaces", "projects", "tasks"] });
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   const { activeWorkspace } = useWorkspace();
-  const [workspaces, setWorkspaces] = useState([]);
-  const [monitorData, setMonitorData] = useState([]);
+  const workspaceId =
+  activeWorkspace?._id ||
+  activeWorkspace?.id ||
+  null;
+
+const workspaceCacheKey = workspaceId || "all";
+const cachedWorkspaces = workspacesCache.get(workspaceCacheKey);
+const cachedMonitorData = workspaceMonitorCache.get(workspaceCacheKey);
+
+const [workspaces, setWorkspaces] = useState(cachedWorkspaces || []);
+const [monitorData, setMonitorData] = useState(cachedMonitorData || []);
   const [attentionOpen, setAttentionOpen] = useState(null);
   useEffect(() => {
-    let cancelled = false;
-    const syncWorkspaces = async () => {
-      try {
-        const response = await getAllWorkspaces();
-        if (cancelled || !response?.workspaces) return;
-        const userRole = localStorage.getItem("role");
-        if (userRole !== "Project Admin" && activeWorkspace) {
-          setWorkspaces(response.workspaces.filter((ws) =>
-            (ws._id || ws.id) === (activeWorkspace._id || activeWorkspace.id)
-          ));
-        } else {
-          setWorkspaces(response.workspaces);
-        }
-      } catch (error) {
-        if (!cancelled) console.error("Error fetching workspaces:", error);
+  let cancelled = false;
+  let requestInFlight = false;
+
+  const syncWorkspaces = async () => {
+    if (cancelled || requestInFlight) return;
+
+    requestInFlight = true;
+
+    try {
+      const response = await getAllWorkspaces();
+
+      if (cancelled || !response?.workspaces) return;
+
+      const userRole = localStorage.getItem("role");
+
+      const filteredWorkspaces =
+        userRole !== "Project Admin" && activeWorkspace
+          ? response.workspaces.filter(
+              (ws) =>
+                (ws._id || ws.id) ===
+                (activeWorkspace._id || activeWorkspace.id)
+            )
+          : response.workspaces;
+
+      setWorkspaces(filteredWorkspaces);
+      workspacesCache.set(workspaceCacheKey, filteredWorkspaces);
+    } catch (error) {
+      if (!cancelled) {
+        console.error("Error fetching workspaces:", error);
       }
-    };
+    } finally {
+      requestInFlight = false;
+    }
+  };
 
+  const cachedData = workspacesCache.get(workspaceCacheKey);
+
+  if (cachedData) {
+    setWorkspaces(cachedData);
+
+    // Background refresh without clearing existing UI
     syncWorkspaces();
-  
-    const handleFocus = () => syncWorkspaces();
-    const handleVisibility = () => { if (document.visibilityState === "visible") syncWorkspaces(); };
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      cancelled = true;
-    
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [activeWorkspace, liveTick]);
+  } else {
+    syncWorkspaces();
+  }
 
-  const workspaceId = activeWorkspace?._id || activeWorkspace?.id ||  workspaces[0]?._id || workspaces[0]?.id;
+  const handleFocus = () => syncWorkspaces();
+
+  const handleVisibility = () => {
+    if (document.visibilityState === "visible") {
+      syncWorkspaces();
+    }
+  };
+
+  window.addEventListener("focus", handleFocus);
+  document.addEventListener("visibilitychange", handleVisibility);
+
+  return () => {
+    cancelled = true;
+    window.removeEventListener("focus", handleFocus);
+    document.removeEventListener("visibilitychange", handleVisibility);
+  };
+}, [activeWorkspace, workspaceCacheKey, liveTick]);
+
   useEffect(() => {
     if (!workspaceId) {
       setMonitorData([]);

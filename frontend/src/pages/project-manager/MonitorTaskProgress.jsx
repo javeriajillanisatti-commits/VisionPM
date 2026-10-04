@@ -6,16 +6,20 @@ import { useWorkspace } from "../../context/WorkspaceContext";
 import { Search, CalendarDays, History, LayoutGrid, Rows, LineChart, ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import TaskProgressCard from "../../components/cards/TaskProgressCard";
 import axios from "axios";
-
+const monitorTaskProgressCache = new Map();
 const MonitorTaskProgress = () => {
   const liveTick = useLiveTick({ resources: ["workspaces", "projects", "tasks"] });
   const { projectId } = useParams();
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
-  const [projectsData, setProjectsData] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [loading, setLoading] = useState(false);
+const targetWorkspaceId = activeWorkspace?.id || activeWorkspace?._id;
+const cacheKey = targetWorkspaceId || "all";
+const cachedProjectsData = monitorTaskProgressCache.get(cacheKey);
+
+const [projectsData, setProjectsData] = useState(cachedProjectsData || []);
+const [searchTerm, setSearchTerm] = useState("");
+const [statusFilter, setStatusFilter] = useState("All");
+const [loading, setLoading] = useState(!cachedProjectsData);
   const [sortOrder, setSortOrder] = useState("newest");
   const [viewMode, setViewMode] = useState("detailed");
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches);
@@ -33,60 +37,108 @@ const MonitorTaskProgress = () => {
   const effectiveViewMode = isMobile ? "detailed" : viewMode;
 
   useEffect(() => {
-    let cancelled = false;
-    let requestInFlight = false;
+  let cancelled = false;
+  let requestInFlight = false;
 
-    const getTargetWorkspaceId = () => {
-      let targetWorkspaceId = activeWorkspace?.id || activeWorkspace?._id;
-      if (!targetWorkspaceId) {
-        const savedWS = localStorage.getItem("activeWorkspace");
-        if (savedWS) {
-          try {
-            const parsedWS = JSON.parse(savedWS);
-            targetWorkspaceId = parsedWS.id || parsedWS._id;
-          } catch (error) {
-            console.error("Unable to read saved active workspace:", error);
-          }
+  const getTargetWorkspaceId = () => {
+    let targetWorkspaceId = activeWorkspace?.id || activeWorkspace?._id;
+
+    if (!targetWorkspaceId) {
+      const savedWS = localStorage.getItem("activeWorkspace");
+
+      if (savedWS) {
+        try {
+          const parsedWS = JSON.parse(savedWS);
+          targetWorkspaceId = parsedWS.id || parsedWS._id;
+        } catch (error) {
+          console.error("Unable to read saved active workspace:", error);
         }
       }
-      return targetWorkspaceId;
-    };
+    }
 
-    const fetchRealMonitorAnalytics = async (showLoader = false) => {
-      const targetWorkspaceId = getTargetWorkspaceId();
-      if (!targetWorkspaceId || cancelled || requestInFlight) return;
-      requestInFlight = true;
-      try {
-        if (showLoader) setLoading(true);
-        const token = sessionStorage.getItem("token");
-        const response = await axios.get(
-          `${process.env.REACT_APP_API_URL}/api/workspaces/${targetWorkspaceId}/monitor`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (!cancelled) setProjectsData(Array.isArray(response.data) ? response.data : []);
-      } catch (err) {
-        if (!cancelled) console.error("Error connecting with monitor dashboard analytics server:", err);
-      } finally {
-        requestInFlight = false;
-        if (showLoader && !cancelled) setLoading(false);
+    return targetWorkspaceId;
+  };
+
+  const fetchRealMonitorAnalytics = async (showLoader = false) => {
+    const targetWorkspaceId = getTargetWorkspaceId();
+
+    if (!targetWorkspaceId || cancelled || requestInFlight) return;
+
+    requestInFlight = true;
+
+    const cachedData = monitorTaskProgressCache.get(targetWorkspaceId);
+
+    if (showLoader && !cachedData) {
+      setLoading(true);
+    }
+
+    try {
+      const token = sessionStorage.getItem("token");
+
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_URL}/api/workspaces/${targetWorkspaceId}/monitor`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      const freshData = Array.isArray(response.data)
+        ? response.data
+        : [];
+
+      if (!cancelled) {
+        setProjectsData(freshData);
+        monitorTaskProgressCache.set(targetWorkspaceId, freshData);
       }
-    };
+    } catch (err) {
+      if (!cancelled) {
+        console.error(
+          "Error connecting with monitor dashboard analytics server:",
+          err
+        );
 
+        if (!cachedData) {
+          setProjectsData([]);
+        }
+      }
+    } finally {
+      requestInFlight = false;
+
+      if (!cancelled) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const cachedData = monitorTaskProgressCache.get(cacheKey);
+
+  if (cachedData) {
+    setProjectsData(cachedData);
+    setLoading(false);
+    fetchRealMonitorAnalytics(false);
+  } else {
     fetchRealMonitorAnalytics(true);
-    const handleFocus = () => fetchRealMonitorAnalytics(false);
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") fetchRealMonitorAnalytics(false);
-    };
+  }
 
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+  const handleFocus = () => fetchRealMonitorAnalytics(false);
 
-    return () => {
-      cancelled = true;
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [activeWorkspace, liveTick]);
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "visible") {
+      fetchRealMonitorAnalytics(false);
+    }
+  };
+
+  window.addEventListener("focus", handleFocus);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  return () => {
+    cancelled = true;
+    window.removeEventListener("focus", handleFocus);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  };
+}, [activeWorkspace, cacheKey, liveTick]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {

@@ -20,6 +20,8 @@ import ProjectDiscussion from "../../components/project/ProjectDiscussion";
 
 const TASKS_PER_LOAD = 9;
 const DESCRIPTION_LIMIT = 100;
+const tmTasksProjectCache = new Map();
+const tmTasksMemberCache = new Map();
 
 const TASK_SORT_OPTIONS = [
   { value: "", label: "Sort By" },
@@ -183,11 +185,21 @@ const TMTasks = () => {
   const [viewMode, setViewMode] = useState("grid");
   const [currentPage, setCurrentPage] = useState(1);
   const [showFullDescription, setShowFullDescription] = useState(false);
-  const [memberTasks, setMemberTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [projectInfo, setProjectInfo] = useState({ name: "", description: "" });
-  const [projectData, setProjectData] = useState(null);
+  const cachedProject = tmTasksProjectCache.get(projectId);
+const cachedMemberTasks = tmTasksMemberCache.get(projectId);
 
+const [memberTasks, setMemberTasks] = useState(cachedMemberTasks || []);
+const [loading, setLoading] = useState(!cachedMemberTasks);
+const [projectInfo, setProjectInfo] = useState(
+  cachedProject
+    ? {
+        name: cachedProject.projectName || cachedProject.name || "Tasks",
+        description:
+          cachedProject.description || "No description available.",
+      }
+    : { name: "", description: "" }
+);
+const [projectData, setProjectData] = useState(cachedProject || null);
   const projectTitle = projectInfo.name || state?.name || state?.title || "Tasks";
   const projectDescription =
     projectInfo.description || state?.description || "No description available.";
@@ -198,51 +210,81 @@ const TMTasks = () => {
       : projectDescription;
   useEffect(() => setShowFullDescription(false), [projectId, liveTick]);
 
-  // Fetch project details
-  useEffect(() => {
-    if (!projectId) return;
+useEffect(() => {
+  if (!projectId) return;
 
-    const fetchProject = async () => {
-      try {
-        const data = await getProjectById(projectId);
-        const project = data.project || data;
-        setProjectData(project);
-        setProjectInfo({
-          name: project.projectName || project.name || "Tasks",
-          description: project.description || "No description available.",
-        });
-      } catch (error) {
-        console.error("Error fetching project details:", error);
+  const cachedProject = tmTasksProjectCache.get(projectId);
+
+  if (cachedProject) {
+    setProjectData(cachedProject);
+    setProjectInfo({
+      name: cachedProject.projectName || cachedProject.name || "Tasks",
+      description:
+        cachedProject.description || "No description available.",
+    });
+  }
+
+  const fetchProject = async () => {
+    try {
+      const data = await getProjectById(projectId);
+      const project = data.project || data;
+
+      tmTasksProjectCache.set(projectId, project);
+
+      setProjectData(project);
+      setProjectInfo({
+        name: project.projectName || project.name || "Tasks",
+        description:
+          project.description || "No description available.",
+      });
+    } catch (error) {
+      console.error("Error fetching project details:", error);
+    }
+  };
+
+  fetchProject();
+}, [projectId, liveTick]);
+
+ useEffect(() => {
+  if (!projectId) return;
+
+  const cachedTasks = tmTasksMemberCache.get(projectId);
+
+  if (cachedTasks) {
+    setMemberTasks(cachedTasks);
+    setLoading(false);
+  } else {
+    setLoading(true);
+  }
+
+  const fetchTasks = async () => {
+    try {
+      const tasks = (await getMyTasks()).tasks || [];
+
+      const projectTasks = tasks.filter((task) => {
+        const id =
+          task.project?._id ||
+          task.project?.id ||
+          task.project;
+
+        return String(id) === String(projectId);
+      });
+
+      tmTasksMemberCache.set(projectId, projectTasks);
+      setMemberTasks(projectTasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+
+      if (!cachedTasks) {
+        setMemberTasks([]);
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchProject();
-  }, [projectId, liveTick]);
-
-  // Fetch member tasks
-  useEffect(() => {
-    if (!projectId) return;
-
-    const fetchTasks = async () => {
-      try {
-        setLoading(true);
-        const tasks = (await getMyTasks()).tasks || [];
-        setMemberTasks(
-          tasks.filter(task => {
-            const id = task.project?._id || task.project?.id || task.project;
-            return String(id) === String(projectId);
-          })
-        );
-      } catch (error) {
-        console.error("Error fetching tasks:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTasks();
-  }, [projectId, liveTick]);
-
+  fetchTasks();
+}, [projectId, liveTick]);
   const filterCounts = useMemo(() => ({
     all: memberTasks.length,
     todo: memberTasks.filter(t => ["To Do", "Todo"].includes(t.status)).length,

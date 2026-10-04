@@ -19,11 +19,14 @@ const MonitorProjectsandTasks = () => {
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
   const workspaceId = activeWorkspace?.id;
-  const requestId = useRef(0);
+const requestId = useRef(0);
 
-  const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+const cacheKey = workspaceId || "all";
+const cachedMonitorData = monitorProjectsCache.get(cacheKey);
+
+const [projects, setProjects] = useState(cachedMonitorData?.projects || []);
+const [tasks, setTasks] = useState(cachedMonitorData?.tasks || []);
+const [loading, setLoading] = useState(!cachedMonitorData);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,52 +38,70 @@ const MonitorProjectsandTasks = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Load project and task data
-  const loadData = useCallback(async (silent = false) => {
-    const id = ++requestId.current;
+ const loadData = useCallback(async (silent = false) => {
+  const id = ++requestId.current;
 
-    try {
-      if (!silent) setLoading(true);
+  try {
+    const cacheKey = workspaceId || "all";
+    const cachedData = monitorProjectsCache.get(cacheKey);
 
-      const [pRes, tRes] = await Promise.all([
-        getDashboardProjects(workspaceId),
-        getDashboardTasks()
-      ]);
-
-      if (id !== requestId.current) return;
-
-      const allProjects = Array.isArray(pRes) ? pRes : pRes?.projects || [];
-      const allTasks = Array.isArray(tRes) ? tRes : tRes?.tasks || [];
-
-      const list = workspaceId
-        ? allProjects.filter(
-            p => getId(p.workspace) === String(workspaceId)
-          )
-        : allProjects;
-
-      const ids = new Set(list.map(p => String(p._id)));
-
-      setProjects(list);
-      setTasks(allTasks.filter(t => ids.has(getId(t.project))));
-    } catch (err) {
-      if (id !== requestId.current) return;
-
-      console.error(err);
-
-      if (!silent) {
-        setProjects([]);
-        setTasks([]);
-      }
-    } finally {
-      if (id === requestId.current && !silent) setLoading(false);
+    if (!silent && !cachedData) {
+      setLoading(true);
     }
-  }, [workspaceId]);
 
-  useEffect(() => {
-    setProjects([]);
-    setTasks([]);
-    setCurrentPage(1);
-    loadData();
-  }, [workspaceId, loadData, liveTick]);
+    const [pRes, tRes] = await Promise.all([
+      getDashboardProjects(workspaceId),
+      getDashboardTasks()
+    ]);
+
+    if (id !== requestId.current) return;
+
+    const allProjects = Array.isArray(pRes)
+      ? pRes
+      : pRes?.projects || [];
+
+    const allTasks = Array.isArray(tRes)
+      ? tRes
+      : tRes?.tasks || [];
+
+    const list = workspaceId
+      ? allProjects.filter(
+          p => getId(p.workspace) === String(workspaceId)
+        )
+      : allProjects;
+
+    const ids = new Set(list.map(p => String(p._id)));
+
+    const filteredTasks = allTasks.filter(
+      t => ids.has(getId(t.project))
+    );
+
+    setProjects(list);
+    setTasks(filteredTasks);
+
+    monitorProjectsCache.set(cacheKey, {
+      projects: list,
+      tasks: filteredTasks
+    });
+  } catch (err) {
+    if (id !== requestId.current) return;
+
+    console.error(err);
+
+    const cachedData = monitorProjectsCache.get(
+      workspaceId || "all"
+    );
+
+    if (!cachedData) {
+      setProjects([]);
+      setTasks([]);
+    }
+  } finally {
+    if (id === requestId.current) {
+      setLoading(false);
+    }
+  }
+}, [workspaceId]);
 
   // Calculate project statistics
   const getProjectStats = project => {

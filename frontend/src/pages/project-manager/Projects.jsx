@@ -11,6 +11,7 @@ import InviteButton from "../../components/buttons/InviteButton";
 import ProjectControls from "../../components/project/ProjectControls";
 import { ArrowLeft, Layers, X, Trash2, AlertTriangle } from "lucide-react";
 import {createProject, getProjectsByWorkspace, updateProject, deleteProject,} from "../../services/projectService";
+const projectsCache = new Map();
 const Projects = () => {
   const liveTick = useLiveTick({ resources: ["projects", "tasks"] });
   const { state } = useLocation();
@@ -21,7 +22,10 @@ const Projects = () => {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [projects, setProjects] = useState([]);
+  const cacheKey = currentWorkspaceId || "all";
+const cachedProjects = projectsCache.get(cacheKey);
+
+const [projects, setProjects] = useState(cachedProjects || []);
   const [editingProject, setEditingProject] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("");

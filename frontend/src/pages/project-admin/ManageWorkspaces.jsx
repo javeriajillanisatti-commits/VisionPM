@@ -19,6 +19,7 @@ const SORTS = {
   leastProjects: (a, b) => (a.projectsCount || 0) - (b.projectsCount || 0),
 };
 
+const workspaceCache = new Map();
 
 const HEALTH = {
   risk: ["At Risk", AlertCircle, "bg-red-500/10 text-red-400 border-red-500/20", "bg-red-50 text-red-600 border-red-100"],
@@ -125,34 +126,89 @@ const ManageWorkspaces = () => {
 
   const requestIdRef = useRef(0);
   const sortRef = useRef(null);
+  const hasLoadedOnceRef = useRef(false);
   const activeWorkspaceId = activeWorkspace?.id || null;
 
-  const fetchWorkspaces = useCallback(async () => {
-    setLoading(true);
-    if (!allWorkspacesSelected && !activeWorkspaceId) {
-      setWorkspaces([]);
-      return setLoading(false);
-    }
+  const fetchWorkspaces = useCallback(async (showLoader = true) => {
+  if (!allWorkspacesSelected && !activeWorkspaceId) {
+    setWorkspaces([]);
+    setLoading(false);
+    return;
+  }
 
-    const requestId = ++requestIdRef.current;
-    try {
-      const res = await getAllWorkspaces(allWorkspacesSelected ? undefined : activeWorkspaceId);
-      if (requestId !== requestIdRef.current) return;
-      const list = res?.workspaces || res || [];
-      setWorkspaces(allWorkspacesSelected ? list : list.filter(ws => idOf(ws) === String(activeWorkspaceId)));
-    } catch (error) {
-      if (requestId === requestIdRef.current) {
-        console.error("Error fetching workspaces:", error);
+  const cacheKey = allWorkspacesSelected
+    ? "all"
+    : String(activeWorkspaceId);
+
+  const cachedWorkspaces = workspaceCache.get(cacheKey);
+
+  if (showLoader && !cachedWorkspaces && !hasLoadedOnceRef.current) {
+    setLoading(true);
+  }
+
+  const requestId = ++requestIdRef.current;
+
+  try {
+    const res = await getAllWorkspaces(
+      allWorkspacesSelected ? undefined : activeWorkspaceId
+    );
+
+    if (requestId !== requestIdRef.current) return;
+
+    const list = res?.workspaces || res || [];
+
+    const freshWorkspaces = allWorkspacesSelected
+      ? list
+      : list.filter(
+          ws => idOf(ws) === String(activeWorkspaceId)
+        );
+
+    setWorkspaces(freshWorkspaces);
+    workspaceCache.set(cacheKey, freshWorkspaces);
+
+    hasLoadedOnceRef.current = true;
+  } catch (error) {
+    if (requestId === requestIdRef.current) {
+      console.error("Error fetching workspaces:", error);
+
+      const cachedData = workspaceCache.get(cacheKey);
+
+      if (cachedData) {
+        setWorkspaces(cachedData);
+      } else {
         setWorkspaces([]);
       }
-    } finally {
-      if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [activeWorkspaceId, allWorkspacesSelected]);
+  } finally {
+    if (requestId === requestIdRef.current) {
+      setLoading(false);
+    }
+  }
+}, [activeWorkspaceId, allWorkspacesSelected]);
 
-  useEffect(() => {
-    fetchWorkspaces();
-  }, [fetchWorkspaces, liveTick]);
+useEffect(() => {
+  const cacheKey = allWorkspacesSelected
+    ? "all"
+    : String(activeWorkspaceId);
+
+  const cachedWorkspaces = workspaceCache.get(cacheKey);
+
+  if (cachedWorkspaces) {
+    setWorkspaces(cachedWorkspaces);
+    setLoading(false);
+    hasLoadedOnceRef.current = true;
+
+    fetchWorkspaces(false);
+    return;
+  }
+
+  fetchWorkspaces(true);
+}, [
+  activeWorkspaceId,
+  allWorkspacesSelected,
+  fetchWorkspaces,
+  liveTick,
+]);
 
 
   useEffect(() => {
@@ -181,13 +237,23 @@ const ManageWorkspaces = () => {
     fetchWorkspaces();
   };
 
-  const addWorkspace = workspace => {
-    if (allWorkspacesSelected || idOf(workspace) === String(activeWorkspaceId)) {
-      setWorkspaces(prev => [...prev, workspace]);
-    }
-    refreshWorkspaceList();
-  };
+ const addWorkspace = workspace => {
+  if (allWorkspacesSelected || idOf(workspace) === String(activeWorkspaceId)) {
+    setWorkspaces(prev => {
+      const updated = [...prev, workspace];
 
+      const cacheKey = allWorkspacesSelected
+        ? "all"
+        : String(activeWorkspaceId);
+
+      workspaceCache.set(cacheKey, updated);
+
+      return updated;
+    });
+  }
+
+  refreshWorkspaceList();
+};
   const updateWorkspace = workspace => {
     const id = idOf(workspace);
     setWorkspaces(prev => prev.map(ws => (idOf(ws) === id ? workspace : ws)));
@@ -202,7 +268,17 @@ const ManageWorkspaces = () => {
 
     try {
       await deleteWorkspaceAPI(id);
-      setWorkspaces(prev => prev.filter(ws => idOf(ws) !== id));
+    setWorkspaces(prev => {
+  const updated = prev.filter(ws => idOf(ws) !== id);
+
+  const cacheKey = allWorkspacesSelected
+    ? "all"
+    : String(activeWorkspaceId);
+
+  workspaceCache.set(cacheKey, updated);
+
+  return updated;
+});
       if (String(activeWorkspace?.id) === id) {
         clearWorkspaceSelection();
         setWorkspaces([]);

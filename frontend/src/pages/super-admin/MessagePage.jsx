@@ -10,6 +10,7 @@ import {
 
 import MessageDropdown from "../../components/messagedetail/MessageDropdown";
 import MessageDetail from "../../components/messagedetail/MessageDetail";
+const messagesCache = new Map();
 
 const PAGE_SIZE = 5;
 
@@ -172,27 +173,53 @@ const MessagePage = () => {
    const liveTick = useLiveTick({ resources: ["contact", "notifications"] });
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
+ const cacheKey = "contact-messages";
+const cachedMessages = messagesCache.get(cacheKey);
+
+const [messages, setMessages] = useState(cachedMessages || []);
+const [loading, setLoading] = useState(!cachedMessages);
   const [filter, setFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
+const fetchMessages = useCallback(async (showLoader = false) => {
+  const cachedData = messagesCache.get(cacheKey);
 
-  const fetchMessages = useCallback(async (silent = false) => {
-    try {
-      if (!silent) setLoading(true);
-      const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/contact`);
-      setMessages(res.data.data || []);
-    } catch (error) {
-      console.error("Fetch Messages Error:", error);
-    } finally {
-      if (!silent) setLoading(false);
+  try {
+    if (showLoader && !cachedData) {
+      setLoading(true);
     }
-  }, []);
 
-  // Initial load of messages
+    const res = await axios.get(
+      `${process.env.REACT_APP_API_URL}/api/contact`
+    );
+
+    const freshMessages = res.data.data || [];
+
+    setMessages(freshMessages);
+    messagesCache.set(cacheKey, freshMessages);
+  } catch (error) {
+    console.error("Fetch Messages Error:", error);
+
+    if (!cachedData) {
+      setMessages([]);
+    }
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
   useEffect(() => {
+  const cachedData = messagesCache.get(cacheKey);
+
+  if (cachedData) {
+    setMessages(cachedData);
+    setLoading(false);
+
+    // Background refresh without showing loading
     fetchMessages(false);
-  }, [fetchMessages, liveTick]);
+  } else {
+    fetchMessages(true);
+  }
+}, [fetchMessages, liveTick]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -208,25 +235,39 @@ const MessagePage = () => {
     setIsOpen(false);
   };
 
-  const markAsRead = async (id) => {
-    try {
-      await axios.patch(`${process.env.REACT_APP_API_URL}/api/contact/${id}/read`);
-      await fetchMessages(true);
-      if (selectedMessage) setSelectedMessage({ ...selectedMessage, isRead: true });
-    } catch (error) {
-      console.error("Mark Read Error:", error);
-    }
-  };
+const markAsRead = async (id) => {
+  try {
+    await axios.patch(
+      `${process.env.REACT_APP_API_URL}/api/contact/${id}/read`
+    );
 
-  const deleteMessage = async (id) => {
-    try {
-      await axios.delete(`${process.env.REACT_APP_API_URL}/api/contact/${id}`);
-      await fetchMessages(true);
-      if (selectedMessage?._id === id) handleClose();
-    } catch (error) {
-      console.error("Delete Error:", error);
+    await fetchMessages(false);
+
+    if (selectedMessage) {
+      setSelectedMessage({
+        ...selectedMessage,
+        isRead: true,
+      });
     }
-  };
+  } catch (error) {
+    console.error("Mark Read Error:", error);
+  }
+};
+ const deleteMessage = async (id) => {
+  try {
+    await axios.delete(
+      `${process.env.REACT_APP_API_URL}/api/contact/${id}`
+    );
+
+    await fetchMessages(false);
+
+    if (selectedMessage?._id === id) {
+      handleClose();
+    }
+  } catch (error) {
+    console.error("Delete Error:", error);
+  }
+};
 
   const filteredMessages = messages.filter(
     (msg) => filter === "All" || (filter === "Unread" && !msg.isRead) || (filter === "Read" && msg.isRead)

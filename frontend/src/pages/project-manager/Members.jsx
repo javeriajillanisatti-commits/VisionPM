@@ -5,66 +5,100 @@ import { useWorkspace } from "../../context/WorkspaceContext";
 import { Search, AlertTriangle, SlidersHorizontal, Layers, CircleDot, Timer, Gauge, X } from "lucide-react";
 import axios from "axios";
 import MembersTable from "../../components/project/MembersTable";
-
+const membersCache = new Map();
 const Members = () => {
   const liveTick = useLiveTick({ resources: ["workspaces", "users", "projects"] });
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const targetWorkspaceId = activeWorkspace?.id || activeWorkspace?._id;
+const cacheKey = targetWorkspaceId || "all";
+const cachedMembers = membersCache.get(cacheKey);
+
+const [members, setMembers] = useState(cachedMembers || []);
+const [loading, setLoading] = useState(!cachedMembers);
   const [statusFilter, setStatusFilter] = useState("All");
 
-  useEffect(() => {
-    const targetWorkspaceId = activeWorkspace?.id || activeWorkspace?._id;
-    if (!targetWorkspaceId) return;
+ useEffect(() => {
+  if (!targetWorkspaceId) {
+    setLoading(false);
+    return;
+  }
 
-    let cancelled = false;
-    let firstLoad = true;
+  let cancelled = false;
 
-    const fetchWorkspaceProjectMembers = async () => {
-      const token = sessionStorage.getItem("token");
-      if (!token || token === "null" || token === "undefined") return;
+  const fetchWorkspaceProjectMembers = async () => {
+    const token = sessionStorage.getItem("token");
 
-      try {
-        if (firstLoad) setLoading(true);
+    if (!token || token === "null" || token === "undefined") {
+      setLoading(false);
+      return;
+    }
 
-        const response = await axios.get(
-          `${process.env.REACT_APP_API_URL}/api/workspaces/${targetWorkspaceId}/members-projects`,
-           { headers: { Authorization: `Bearer ${token}` } }
-         );
+    const cachedData = membersCache.get(cacheKey);
 
-        if (!cancelled) {
-          setMembers(Array.isArray(response.data) ? response.data : []);
+    if (cachedData) {
+      setMembers(cachedData);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_URL}/api/workspaces/${targetWorkspaceId}/members-projects`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
-      } catch (err) {
-        if (!cancelled) {
-          console.error("Error loading project-based workspace members:", err);
+      );
+
+      const freshMembers = Array.isArray(response.data)
+        ? response.data
+        : [];
+
+      if (!cancelled) {
+        setMembers(freshMembers);
+        membersCache.set(cacheKey, freshMembers);
+      }
+    } catch (err) {
+      if (!cancelled) {
+        console.error(
+          "Error loading project-based workspace members:",
+          err
+        );
+
+        if (!cachedData) {
+          setMembers([]);
         }
-      } finally {
-        if (firstLoad && !cancelled) setLoading(false);
-        firstLoad = false;
       }
-    };
-
-    fetchWorkspaceProjectMembers();
-
-    const handleFocus = () => fetchWorkspaceProjectMembers();
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        fetchWorkspaceProjectMembers();
+    } finally {
+      if (!cancelled) {
+        setLoading(false);
       }
-    };
+    }
+  };
 
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+  fetchWorkspaceProjectMembers();
 
-    return () => {
-      cancelled = true;
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [activeWorkspace, liveTick]);
+  const handleFocus = () => fetchWorkspaceProjectMembers();
+
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "visible") {
+      fetchWorkspaceProjectMembers();
+    }
+  };
+
+  window.addEventListener("focus", handleFocus);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  return () => {
+    cancelled = true;
+    window.removeEventListener("focus", handleFocus);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  };
+}, [targetWorkspaceId, cacheKey, liveTick]);
 
   const filteredMembers = members
     .filter((m) => {

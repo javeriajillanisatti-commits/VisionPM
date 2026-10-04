@@ -7,6 +7,7 @@ import { useTheme } from "../../context/ThemeContext";
 import StatsCard from "../../components/cards/StatsCard";
 
 const PAGE_SIZE = 5;
+const approvalsCache = new Map();
 
 const AVATAR_COLORS = [
   ["bg-blue-100", "text-blue-700", "bg-blue-500/15", "text-blue-300"],
@@ -267,8 +268,11 @@ const ToastBanner = ({ toast, onClose }) => (
 const Approvals = () => {
   const { isDarkMode } = useTheme();
   const liveTick = useLiveTick({ resources: ["users", "approvals"] });
-  const [requests, setRequests] = useState([]);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const cacheKey = "approval-requests";
+const cachedRequests = approvalsCache.get(cacheKey);
+
+const [requests, setRequests] = useState(cachedRequests || []);
+const [initialLoading, setInitialLoading] = useState(!cachedRequests);
   const [cvLoading, setCvLoading] = useState(false);
   const [showCVModal, setShowCVModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -283,24 +287,54 @@ const Approvals = () => {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  const fetchRequests = useCallback(async (isFirstLoad = false) => {
-    if (isFirstLoad) setInitialLoading(true);
+const fetchRequests = useCallback(
+  async (showLoader = false) => {
+    const cachedData = approvalsCache.get(cacheKey);
+
+    if (showLoader && !cachedData) {
+      setInitialLoading(true);
+    }
 
     try {
       const response = await approvalService.getPendingRequests();
-      setRequests(response.users || []);
-    } catch (error) {
-      console.error(" Fetch Requests Error:", error.response?.data || error.message || error);
-      showToast( error.response?.data?.message || error.message || "Unable to load requests", "error" );
-    } finally {
-      if (isFirstLoad) setInitialLoading(false);
-    }
-  }, [showToast]);
+      const freshRequests = response.users || [];
 
-  // Initial load of approval requests
+      setRequests(freshRequests);
+      approvalsCache.set(cacheKey, freshRequests);
+    } catch (error) {
+      console.error(
+        " Fetch Requests Error:",
+        error.response?.data || error.message || error
+      );
+
+      if (!cachedData) {
+        showToast(
+          error.response?.data?.message ||
+            error.message ||
+            "Unable to load requests",
+          "error"
+        );
+      }
+    } finally {
+      setInitialLoading(false);
+    }
+  },
+  [showToast]
+);
+
   useEffect(() => {
+  const cachedData = approvalsCache.get(cacheKey);
+
+  if (cachedData) {
+    setRequests(cachedData);
+    setInitialLoading(false);
+
+    // Background refresh without showing skeleton
+    fetchRequests(false);
+  } else {
     fetchRequests(true);
-  }, [fetchRequests, liveTick]);
+  }
+}, [fetchRequests, liveTick]);
 
   useEffect(() => setCurrentPage(1), [statusFilter]);
   const requestStatusChange = (request, newStatus) => {

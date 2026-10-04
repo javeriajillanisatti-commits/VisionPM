@@ -16,7 +16,7 @@ const getTaskId = (task) => task?._id || task?.id;
 const PRIORITY_WEIGHT = { High: 3, Medium: 2, Low: 1 };
 const weightOf = (t) => PRIORITY_WEIGHT[t.priority] || 0;
 const createdOf = (t) => new Date(t.createdAt || t.id);
-
+const tasksPageCache = new Map();
 const SORTERS = {
   priority_high: (a, b) => weightOf(b) - weightOf(a),
   priority_low: (a, b) => weightOf(a) - weightOf(b),
@@ -40,11 +40,20 @@ const Tasks = () => {
   const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
   const { projectId } = useParams();
   const { isDarkMode } = useTheme();
-  const [projectTitle, setProjectTitle] = useState("Project Tasks");
-  const [projectDescription, setProjectDescription] = useState("No description available.");
-  const [projectInfo, setProjectInfo] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [tasks, setTasks] = useState([]);
+const cacheKey = projectId || "all";
+const cachedTasksData = tasksPageCache.get(cacheKey);
+
+const [projectTitle, setProjectTitle] = useState(
+  cachedTasksData?.projectTitle || "Project Tasks"
+);
+const [projectDescription, setProjectDescription] = useState(
+  cachedTasksData?.projectDescription || "No description available."
+);
+const [projectInfo, setProjectInfo] = useState(
+  cachedTasksData?.projectInfo || null
+);
+const [showModal, setShowModal] = useState(false);
+const [tasks, setTasks] = useState(cachedTasksData?.tasks || []);
   const [activeTab, setActiveTab] = useState("All Tasks");
   const [viewMode, setViewMode] = useState("grid");
   const [searchQuery, setSearchQuery] = useState("");
@@ -62,48 +71,103 @@ const Tasks = () => {
   const [visibleCount, setVisibleCount] = useState(6);
 
   const applyProject = (res) => {
-    const proj = res?.project || res;
-    if (!proj) return;
-    setProjectInfo(proj);
-    setProjectTitle(proj.projectName || proj.title || "Project Tasks");
-    setProjectDescription(proj.description || "No description available.");
+  const proj = res?.project || res;
+  if (!proj) return;
+
+  const title = proj.projectName || proj.title || "Project Tasks";
+  const description = proj.description || "No description available.";
+
+  setProjectInfo(proj);
+  setProjectTitle(title);
+  setProjectDescription(description);
+
+  const existingCache = tasksPageCache.get(cacheKey) || {};
+  tasksPageCache.set(cacheKey, {
+    ...existingCache,
+    projectInfo: proj,
+    projectTitle: title,
+    projectDescription: description,
+  });
+};
+
+const applyTasks = (res) => {
+  const freshTasks = res?.tasks || (Array.isArray(res) ? res : []);
+
+  setTasks(freshTasks);
+
+  const existingCache = tasksPageCache.get(cacheKey) || {};
+  tasksPageCache.set(cacheKey, {
+    ...existingCache,
+    tasks: freshTasks,
+  });
+};
+
+  useEffect(() => {
+  if (!projectId) return;
+
+  let cancelled = false;
+  let requestInFlight = false;
+
+  const sync = async () => {
+    if (cancelled || requestInFlight) return;
+
+    requestInFlight = true;
+
+    try {
+      const projResponse = await getProjectById(projectId);
+
+      if (!cancelled) {
+        applyProject(projResponse);
+      }
+
+      const taskResponse = await getTasksByProject(projectId);
+
+      if (!cancelled) {
+        applyTasks(taskResponse);
+        setVisibleCount(6);
+      }
+    } catch (error) {
+      if (!cancelled) {
+        console.error("Error fetching tasks pipeline elements:", error);
+      }
+    } finally {
+      requestInFlight = false;
+    }
   };
 
-  const applyTasks = (res) => setTasks(res?.tasks || (Array.isArray(res) ? res : []));
+  const cachedData = tasksPageCache.get(cacheKey);
 
-  // Poll project + tasks every second, and on focus / tab visible.
-  useEffect(() => {
-    if (!projectId) return;
-    let cancelled = false;
-    let requestInFlight = false;
+  if (cachedData) {
+    setProjectInfo(cachedData.projectInfo || null);
+    setProjectTitle(cachedData.projectTitle || "Project Tasks");
+    setProjectDescription(
+      cachedData.projectDescription || "No description available."
+    );
+    setTasks(cachedData.tasks || []);
+    setVisibleCount(6);
 
-    const sync = async () => {
-      if (cancelled || requestInFlight) return;
-      requestInFlight = true;
-      try {
-        const projResponse = await getProjectById(projectId);
-        if (!cancelled) applyProject(projResponse);
-        const taskResponse = await getTasksByProject(projectId);
-        if (!cancelled) applyTasks(taskResponse);
-      } catch (error) {
-        if (!cancelled) console.error("Error fetching tasks pipeline elements:", error);
-      } finally {
-        requestInFlight = false;
-      }
-    };
-    const onVisible = () => document.visibilityState === "visible" && sync();
-
+    // Background refresh, no UI reset
     sync();
-  
-    window.addEventListener("focus", sync);
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      cancelled = true;
-      
-      window.removeEventListener("focus", sync);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [projectId, liveTick]);
+  } else {
+    // First visit
+    sync();
+  }
+
+  const onVisible = () => {
+    if (document.visibilityState === "visible") {
+      sync();
+    }
+  };
+
+  window.addEventListener("focus", sync);
+  document.addEventListener("visibilitychange", onVisible);
+
+  return () => {
+    cancelled = true;
+    window.removeEventListener("focus", sync);
+    document.removeEventListener("visibilitychange", onVisible);
+  };
+}, [projectId, cacheKey, liveTick]);
 
   const fetchProjectMetaAndTasks = async () => {
     try {

@@ -1,5 +1,5 @@
 import { useLiveTick } from "../../hooks/useLiveRefresh";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import {
   Search, Filter, CalendarDays, UserRound, Activity, Plus, Pencil,
@@ -37,6 +37,7 @@ const formatDate = date => {
   };
 };
 
+const auditCache = new Map();
 const AdminAuditTrail = () => {
   const liveTick = useLiveTick({ resources: ["audit", "projects", "tasks", "users", "workspaces"] });
   const { activeWorkspace } = useWorkspace();
@@ -48,6 +49,7 @@ const AdminAuditTrail = () => {
   const [dateRange, setDateRange] = useState("");
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const hasLoadedOnce = useRef(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [actionOpen, setActionOpen] = useState(false);
   const [moduleOpen, setModuleOpen] = useState(false);
@@ -57,42 +59,80 @@ const AdminAuditTrail = () => {
   const selectedWorkspaceId = activeWorkspace?.id || activeWorkspace?._id || "";
 
   
-  const fetchAuditLogs = useCallback(async () => {
-    try {
-      const token = sessionStorage.getItem("token");
-      if (!token) return setAuditLogs([]);
+const fetchAuditLogs = useCallback(async () => {
+  try {
+    const token = sessionStorage.getItem("token");
 
-      setLoading(true);
-      const { data } = await axios.get(
-  `${process.env.REACT_APP_API_URL}/api/audit`,
-  {
-        params: selectedWorkspaceId ? { workspaceId: selectedWorkspaceId } : {},
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const logs = data.logs || [];
-      setAuditLogs(
-        selectedWorkspaceId
-          ? logs.filter(log => String(getWorkspaceId(log.workspace)) === String(selectedWorkspaceId))
-          : logs
-      );
-    } catch (error) {
-      console.error("Error fetching audit logs:", error.response?.data || error);
+    if (!token) {
       setAuditLogs([]);
-    } finally {
-      setLoading(false);
+      return;
     }
-  }, [selectedWorkspaceId]);
+
+    if (!hasLoadedOnce.current) {
+      setLoading(true);
+    }
+
+    const { data } = await axios.get(
+      `${process.env.REACT_APP_API_URL}/api/audit`,
+      {
+        params: selectedWorkspaceId
+          ? { workspaceId: selectedWorkspaceId }
+          : {},
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    const logs = data.logs || [];
+
+    const filteredLogs = selectedWorkspaceId
+      ? logs.filter(
+          log =>
+            String(getWorkspaceId(log.workspace)) ===
+            String(selectedWorkspaceId)
+        )
+      : logs;
+
+    setAuditLogs(filteredLogs);
+
+    auditCache.set(selectedWorkspaceId || "all", filteredLogs);
+  } catch (error) {
+    console.error(
+      "Error fetching audit logs:",
+      error.response?.data || error
+    );
+    setAuditLogs([]);
+  } finally {
+    setLoading(false);
+    hasLoadedOnce.current = true;
+  }
+}, [selectedWorkspaceId]);
 
   useEffect(() => {
-    setAuditLogs([]);
-    setCurrentPage(1);
+  const cacheKey = selectedWorkspaceId || "all";
+  const cachedLogs = auditCache.get(cacheKey);
+
+  if (cachedLogs) {
+    setAuditLogs(cachedLogs);
+    setLoading(false);
+    hasLoadedOnce.current = true;
+
     fetchAuditLogs();
-  }, [fetchAuditLogs, liveTick]);
+    return;
+  }
+
+  setCurrentPage(1);
+  fetchAuditLogs();
+}, [selectedWorkspaceId, fetchAuditLogs]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, actionFilter, moduleFilter, dateRange, selectedWorkspaceId]);
+
+  useEffect(() => {
+  if (!hasLoadedOnce.current) return;
+
+  fetchAuditLogs();
+}, [liveTick]);
 
   const getActionStyle = action =>
     ACTION_STYLES[action]?.[isDarkMode ? 0 : 1] ||

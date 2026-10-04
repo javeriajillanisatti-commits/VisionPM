@@ -15,6 +15,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 
+const usersCache = new Map();
 const USERS_PER_PAGE = 8;
 
 const ManageUsers = () => {
@@ -47,100 +48,95 @@ const ManageUsers = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const fetchUsers = useCallback(async () => {
-    const requestId = ++requestIdRef.current;
+  const fetchUsers = useCallback(async (showLoader = true) => {
+  const requestId = ++requestIdRef.current;
 
-    try {
-      const token = sessionStorage.getItem("token");
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
+  try {
+    const token = sessionStorage.getItem("token");
 
-      if (!workspaceReady) return;
-
-      hasLoadedOnceRef.current ? setIsRefreshing(true) : setIsLoading(true);
-
-      const { data } = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/users?search=${encodeURIComponent(
-          debouncedSearchTerm
-        )}&workspaceId=${workspaceId}&_=${Date.now()}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (requestId !== requestIdRef.current) return;
-
-      setUsers(data?.users || []);
-      setError(null);
-      hasLoadedOnceRef.current = true;
-    } catch (err) {
-      if (requestId !== requestIdRef.current) return;
-
-      console.error("Error fetching users:", err);
-      setError(
-        err.response?.status === 401
-          ? "Your session has expired. Please log in again."
-          : err.code === "ERR_NETWORK"
-          ? "Couldn't connect to the server. Check your connection."
-          : "Failed to load users. Please try again."
-      );
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setIsLoading(false);
-        setIsRefreshing(false);
-      }
+    if (!token) {
+      setIsLoading(false);
+      return;
     }
-  }, [debouncedSearchTerm, workspaceId, workspaceReady]);
 
-  useEffect(() => {
     if (!workspaceReady) return;
 
-    fetchUsers()
-    const token = sessionStorage.getItem("token");
-    let socket;
+    const cacheKey = `${workspaceId}|${debouncedSearchTerm}`;
+    const cachedUsers = usersCache.get(cacheKey);
 
-    if (token) {
-      socket = io(process.env.REACT_APP_API_URL, { auth: { token } });
-
-      socket.on("userStatusChanged", ({ userId, isOnline }) => {
-        const updateUser = user =>
-          String(user._id) === String(userId) ? { ...user, isOnline } : user;
-
-        setUsers(current => current.map(updateUser));
-        setSelectedUser(current =>
-          current && String(current._id) === String(userId)
-            ? { ...current, isOnline }
-            : current
-        );
-      });
-
-      socket.on("connect_error", err =>
-        console.error("User status socket connection error:", err.message)
-      );
+    if (showLoader && !cachedUsers && !hasLoadedOnceRef.current) {
+      setIsLoading(true);
     }
 
-    const handleStatus = () => fetchUsers();
-    const handleStorage = e =>
-      e.key === "userStatusChanged" && fetchUsers();
-    const handleFocus = () => fetchUsers();
-    const handleVisibility = () =>
-      !document.hidden && fetchUsers();
+    if (showLoader && hasLoadedOnceRef.current) {
+      setIsRefreshing(true);
+    }
 
-    window.addEventListener("userStatusChanged", handleStatus);
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibility);
+    const { data } = await axios.get(
+      `${process.env.REACT_APP_API_URL}/api/users?search=${encodeURIComponent(
+        debouncedSearchTerm
+      )}&workspaceId=${workspaceId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
-    return () => {
+    if (requestId !== requestIdRef.current) return;
 
-      socket?.off("userStatusChanged");
-      socket?.disconnect();
-      window.removeEventListener("userStatusChanged", handleStatus);
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [fetchUsers, workspaceReady, liveTick]);
+    const freshUsers = data?.users || [];
+
+    setUsers(freshUsers);
+    usersCache.set(cacheKey, freshUsers);
+    setError(null);
+    hasLoadedOnceRef.current = true;
+  } catch (err) {
+    if (requestId !== requestIdRef.current) return;
+
+    console.error("Error fetching users:", err);
+
+    setError(
+      err.response?.status === 401
+        ? "Your session has expired. Please log in again."
+        : err.code === "ERR_NETWORK"
+        ? "Couldn't connect to the server. Check your connection."
+        : "Failed to load users. Please try again."
+    );
+  } finally {
+    if (requestId === requestIdRef.current) {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }
+}, [debouncedSearchTerm, workspaceId, workspaceReady]);
+  useEffect(() => {
+  if (!workspaceReady) return;
+
+  const cacheKey = `${workspaceId}|${debouncedSearchTerm}`;
+  const cachedUsers = usersCache.get(cacheKey);
+
+  if (cachedUsers) {
+    setUsers(cachedUsers);
+    setIsLoading(false);
+    hasLoadedOnceRef.current = true;
+
+    fetchUsers(false);
+  } else {
+    fetchUsers(true);
+  }
+}, [
+  workspaceReady,
+  workspaceId,
+  debouncedSearchTerm,
+  fetchUsers,
+]);
+
+useEffect(() => {
+  if (!hasLoadedOnceRef.current) return;
+
+  fetchUsers(false);
+}, [liveTick, fetchUsers]);
 
   useEffect(() => setCurrentPage(1), [debouncedSearchTerm, roleFilter]);
 

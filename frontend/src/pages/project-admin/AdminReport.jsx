@@ -17,7 +17,7 @@ import { useTheme } from "../../context/ThemeContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-
+const adminReportCache = new Map();
 const INPROGRESS_STATUSES = ["in progress", "inprogress"];
 const PENDING_STATUSES = ["todo", "to do", "pending"];
 
@@ -77,6 +77,7 @@ const AdminReport = () => {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
 
@@ -95,60 +96,84 @@ const AdminReport = () => {
     currentWorkspace?.id || currentWorkspace?._id || currentWorkspace?.workspaceId || null;
 
 
-  const loadData = useCallback(async showLoader => {
-    try {
-      if (showLoader) setLoading(true);
-      const token = sessionStorage.getItem("token");
+ const loadData = useCallback(async showLoader => {
+  try {
+    const cacheKey = workspaceId || "all";
+    const cachedData = adminReportCache.get(cacheKey);
 
-      const [, projectRes, taskRes, userRes] = await Promise.all([
-        getAllWorkspaces(workspaceId),
-        getDashboardProjects(workspaceId),
-        getDashboardTasks(workspaceId),
-        axios.get(`${process.env.REACT_APP_API_URL}/api/users?workspaceId=${workspaceId || ""}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-      ]);
-
-      const projectList = Array.isArray(projectRes) ? projectRes : projectRes?.projects || [];
-      const allTasks = taskRes?.tasks || [];
-      let workspaceTasks = allTasks;
-
-      if (workspaceId) {
-        const ids = projectList
-          .filter(project => String(getProjectWorkspaceId(project)) === String(workspaceId))
-          .map(project => String(getProjectId(project)));
-        workspaceTasks = allTasks.filter(task => ids.includes(String(getTaskProjectId(task))));
-      }
-
-      setProjects(projectList);
-      setTasks(workspaceTasks);
-      setUsers(userRes?.data?.users || []);
-
-      setSelectedProject(current =>
-        current === "All" ||
-        projectList.some(project => String(getProjectId(project)) === String(current))
-          ? current
-          : "All"
-      );
-    } catch (error) {
-      console.error("Report load error:", error);
-    } finally {
-      if (showLoader) setLoading(false);
+    if (showLoader && !cachedData && !hasLoadedOnce) {
+      setLoading(true);
     }
-  }, [workspaceId]);
 
-  useEffect(() => {
-  loadData(true);
-}, [loadData, liveTick]);
+    const token = sessionStorage.getItem("token");
 
-  const projectList = useMemo(
-    () =>
-      workspaceId
-        ? projects.filter(project => String(getProjectWorkspaceId(project)) === String(workspaceId))
-        : projects,
-    [projects, workspaceId]
-  );
+    const [, projectRes, taskRes, userRes] = await Promise.all([
+      getAllWorkspaces(workspaceId),
+      getDashboardProjects(workspaceId),
+      getDashboardTasks(workspaceId),
+      axios.get(
+        `${process.env.REACT_APP_API_URL}/api/users?workspaceId=${workspaceId || ""}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
+    ]);
 
+    const projectList = Array.isArray(projectRes)
+      ? projectRes
+      : projectRes?.projects || [];
+
+    const allTasks = taskRes?.tasks || [];
+    let workspaceTasks = allTasks;
+
+    if (workspaceId) {
+      const ids = projectList
+        .filter(
+          project =>
+            String(getProjectWorkspaceId(project)) === String(workspaceId)
+        )
+        .map(project => String(getProjectId(project)));
+
+      workspaceTasks = allTasks.filter(task =>
+        ids.includes(String(getTaskProjectId(task)))
+      );
+    }
+
+    const freshData = {
+      projects: projectList,
+      tasks: workspaceTasks,
+      users: userRes?.data?.users || []
+    };
+
+    setProjects(freshData.projects);
+    setTasks(freshData.tasks);
+    setUsers(freshData.users);
+
+    adminReportCache.set(cacheKey, freshData);
+
+    setSelectedProject(current =>
+      current === "All" ||
+      projectList.some(
+        project => String(getProjectId(project)) === String(current)
+      )
+        ? current
+        : "All"
+    );
+  } catch (error) {
+    console.error("Report load error:", error);
+
+    const cachedData = adminReportCache.get(workspaceId || "all");
+
+    if (cachedData) {
+      setProjects(cachedData.projects);
+      setTasks(cachedData.tasks);
+      setUsers(cachedData.users);
+    }
+  } finally {
+    setLoading(false);
+    setHasLoadedOnce(true);
+  }
+}, [workspaceId, hasLoadedOnce]);
   
   const isTaskInDateRange = useCallback(task => {
     if (dateRange === "all") return true;
