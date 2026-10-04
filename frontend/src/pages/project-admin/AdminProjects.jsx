@@ -127,7 +127,7 @@ const fetchProjects = useCallback(async () => {
     const cacheKey = currentWorkspaceId || "all";
     const cachedProjects = adminProjectsCache.get(cacheKey);
 
-    if (!hasLoadedOnce) {
+    if (!hasLoadedOnceRef.current) {
       setLoading(!cachedProjects);
     }
 
@@ -159,9 +159,9 @@ const fetchProjects = useCallback(async () => {
     }
   } finally {
     setLoading(false);
-    setHasLoadedOnce(true);
+    hasLoadedOnceRef.current = true;
   }
-}, [currentWorkspaceId, hasLoadedOnce]);
+}, [currentWorkspaceId]);
 useEffect(() => {
   if (!workspaceReady) return;
 
@@ -177,7 +177,7 @@ useEffect(() => {
   if (cachedProjects) {
     setProjects(cachedProjects);
     setLoading(false);
-    setHasLoadedOnce(true);
+    hasLoadedOnceRef.current = true;
   }
 
   fetchProjects();

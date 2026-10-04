@@ -75,7 +75,7 @@ const AdminTasks = () => {
     const cacheKey = projectId;
     const cachedData = adminTasksCache.get(cacheKey);
 
-    if (!hasLoadedOnce && !cachedData) {
+    if (!hasLoadedOnceRef.current && !cachedData) {
       setLoading(true);
     }
 
@@ -116,9 +116,9 @@ const AdminTasks = () => {
     }
   } finally {
     setLoading(false);
-    setHasLoadedOnce(true);
+    hasLoadedOnceRef.current = true;
   }
-}, [token, projectId, apiConfig, hasLoadedOnce]);
+}, [token, projectId, apiConfig]);
 
   useEffect(() => {
   if (!projectId) {
@@ -138,7 +138,7 @@ const AdminTasks = () => {
     }
 
     setLoading(false);
-    setHasLoadedOnce(true);
+    hasLoadedOnceRef.current = true;
   }
 
   fetchProject();
