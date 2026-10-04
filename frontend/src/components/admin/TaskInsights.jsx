@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { X } from "lucide-react";
 
@@ -16,12 +16,15 @@ const TaskInsights = ({
   const [insightsLoading, setInsightsLoading] = useState(false);
   const token = sessionStorage.getItem("token");
 
-  const getWorkspaceId = () =>
-    project?.workspace?._id ||
-    project?.workspace?.id ||
-    project?.workspace;
+  const getWorkspaceId = useCallback(
+    () =>
+      project?.workspace?._id ||
+      project?.workspace?.id ||
+      project?.workspace,
+    [project]
+  );
 
-  const formatInsights = (insights, taskList) => {
+  const formatInsights = useCallback((insights, taskList) => {
     const taskIds = new Set(
       taskList.map(task => String(task._id || task.id))
     );
@@ -41,47 +44,52 @@ const TaskInsights = ({
             : "watch"
       }))
       .slice(0, 8);
-  };
+  }, []);
 
-  const fetchInsights = async showLoader => {
-    if (!open || !tasks.length || !token) return;
+  const fetchInsights = useCallback(
+    async showLoader => {
+      if (!open || !tasks.length || !token) return;
 
-    const workspaceId = getWorkspaceId();
-    const cacheKey = String(workspaceId || "all");
+      const workspaceId = getWorkspaceId();
+      const cacheKey = String(workspaceId || "all");
 
-    try {
-      if (showLoader) {
-        setInsightsLoading(true);
+      try {
+        if (showLoader) {
+          setInsightsLoading(true);
+        }
+
+        const url = workspaceId
+          ? `${process.env.REACT_APP_API_URL}/api/tasks/insights?workspaceId=${workspaceId}`
+          : `${process.env.REACT_APP_API_URL}/api/tasks/insights`;
+
+        const { data } = await axios.get(url, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        const insights = data?.insights || data?.data || [];
+
+        taskInsightsCache.set(cacheKey, insights);
+
+        setTaskInsights(formatInsights(insights, tasks));
+      } catch (error) {
+        console.error(
+          "Error fetching task insights:",
+          error.response?.data || error
+        );
+
+        if (showLoader) {
+          setTaskInsights([]);
+        }
+      } finally {
+        if (showLoader) {
+          setInsightsLoading(false);
+        }
       }
-
-      const url = workspaceId
-        ? `${process.env.REACT_APP_API_URL}/api/tasks/insights?workspaceId=${workspaceId}`
-        : `${process.env.REACT_APP_API_URL}/api/tasks/insights`;
-
-      const { data } = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const insights = data?.insights || data?.data || [];
-
-      taskInsightsCache.set(cacheKey, insights);
-
-      setTaskInsights(formatInsights(insights, tasks));
-    } catch (error) {
-      console.error(
-        "Error fetching task insights:",
-        error.response?.data || error
-      );
-
-      if (showLoader) {
-        setTaskInsights([]);
-      }
-    } finally {
-      if (showLoader) {
-        setInsightsLoading(false);
-      }
-    }
-  };
+    },
+    [open, tasks, token, getWorkspaceId, formatInsights]
+  );
 
   useEffect(() => {
     if (!open || !tasks.length || !token) {
@@ -103,13 +111,20 @@ const TaskInsights = ({
     }
 
     fetchInsights(true);
-  }, [open, project, token]);
+  }, [
+    open,
+    tasks,
+    token,
+    getWorkspaceId,
+    formatInsights,
+    fetchInsights
+  ]);
 
   useEffect(() => {
     if (!liveTick || !open || !tasks.length || !token) return;
 
     fetchInsights(false);
-  }, [liveTick, open, tasks, project, token]);
+  }, [liveTick, open, tasks, token, fetchInsights]);
 
   if (!open) return null;
 
