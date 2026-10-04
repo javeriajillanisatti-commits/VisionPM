@@ -13,7 +13,7 @@ const PAGE_SIZE = 5;
 
 const getId = value =>
   String(typeof value === "object" ? value?._id : value);
-
+const monitorProjectsCache = new Map();
 const MonitorProjectsandTasks = () => {
   const liveTick = useLiveTick({ resources: ["projects", "tasks", "workspaces"] });
   const { activeWorkspace } = useWorkspace();

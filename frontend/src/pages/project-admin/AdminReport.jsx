@@ -95,86 +95,89 @@ const AdminReport = () => {
   const workspaceId =
     currentWorkspace?.id || currentWorkspace?._id || currentWorkspace?.workspaceId || null;
 
+  const loadData = useCallback(async showLoader => {
+    try {
+      const cacheKey = workspaceId || "all";
+      const cachedData = adminReportCache.get(cacheKey);
 
- const loadData = useCallback(async showLoader => {
-  try {
-    const cacheKey = workspaceId || "all";
-    const cachedData = adminReportCache.get(cacheKey);
+      if (showLoader && !cachedData && !hasLoadedOnce) {
+        setLoading(true);
+      }
 
-    if (showLoader && !cachedData && !hasLoadedOnce) {
-      setLoading(true);
-    }
+      const token = sessionStorage.getItem("token");
 
-    const token = sessionStorage.getItem("token");
-
-    const [, projectRes, taskRes, userRes] = await Promise.all([
-      getAllWorkspaces(workspaceId),
-      getDashboardProjects(workspaceId),
-      getDashboardTasks(workspaceId),
-      axios.get(
-        `${process.env.REACT_APP_API_URL}/api/users?workspaceId=${workspaceId || ""}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      )
-    ]);
-
-    const projectList = Array.isArray(projectRes)
-      ? projectRes
-      : projectRes?.projects || [];
-
-    const allTasks = taskRes?.tasks || [];
-    let workspaceTasks = allTasks;
-
-    if (workspaceId) {
-      const ids = projectList
-        .filter(
-          project =>
-            String(getProjectWorkspaceId(project)) === String(workspaceId)
+      const [, projectRes, taskRes, userRes] = await Promise.all([
+        getAllWorkspaces(workspaceId),
+        getDashboardProjects(workspaceId),
+        getDashboardTasks(workspaceId),
+        axios.get(
+          `${process.env.REACT_APP_API_URL}/api/users?workspaceId=${workspaceId || ""}`,
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
         )
-        .map(project => String(getProjectId(project)));
+      ]);
 
-      workspaceTasks = allTasks.filter(task =>
-        ids.includes(String(getTaskProjectId(task)))
+      const projectList = Array.isArray(projectRes)
+        ? projectRes
+        : projectRes?.projects || [];
+
+      const allTasks = taskRes?.tasks || [];
+      let workspaceTasks = allTasks;
+
+      if (workspaceId) {
+        const ids = projectList
+          .filter(
+            project =>
+              String(getProjectWorkspaceId(project)) === String(workspaceId)
+          )
+          .map(project => String(getProjectId(project)));
+
+        workspaceTasks = allTasks.filter(task =>
+          ids.includes(String(getTaskProjectId(task)))
+        );
+      }
+
+      const freshData = {
+        projects: projectList,
+        tasks: workspaceTasks,
+        users: userRes?.data?.users || []
+      };
+
+      setProjects(freshData.projects);
+      setTasks(freshData.tasks);
+      setUsers(freshData.users);
+
+      adminReportCache.set(cacheKey, freshData);
+
+      setSelectedProject(current =>
+        current === "All" ||
+        projectList.some(
+          project => String(getProjectId(project)) === String(current)
+        )
+          ? current
+          : "All"
       );
+    } catch (error) {
+      console.error("Report load error:", error);
+
+      const cachedData = adminReportCache.get(workspaceId || "all");
+
+      if (cachedData) {
+        setProjects(cachedData.projects);
+        setTasks(cachedData.tasks);
+        setUsers(cachedData.users);
+      }
+    } finally {
+      setLoading(false);
+      setHasLoadedOnce(true);
     }
+  }, [workspaceId, hasLoadedOnce]);
 
-    const freshData = {
-      projects: projectList,
-      tasks: workspaceTasks,
-      users: userRes?.data?.users || []
-    };
+  useEffect(() => {
+    loadData(true);
+  }, [loadData, liveTick]);
 
-    setProjects(freshData.projects);
-    setTasks(freshData.tasks);
-    setUsers(freshData.users);
-
-    adminReportCache.set(cacheKey, freshData);
-
-    setSelectedProject(current =>
-      current === "All" ||
-      projectList.some(
-        project => String(getProjectId(project)) === String(current)
-      )
-        ? current
-        : "All"
-    );
-  } catch (error) {
-    console.error("Report load error:", error);
-
-    const cachedData = adminReportCache.get(workspaceId || "all");
-
-    if (cachedData) {
-      setProjects(cachedData.projects);
-      setTasks(cachedData.tasks);
-      setUsers(cachedData.users);
-    }
-  } finally {
-    setLoading(false);
-    setHasLoadedOnce(true);
-  }
-}, [workspaceId, hasLoadedOnce]);
-  
   const isTaskInDateRange = useCallback(task => {
     if (dateRange === "all") return true;
     const taskDate = getTaskDate(task);
@@ -187,9 +190,11 @@ const AdminReport = () => {
       const start = new Date(today);
       const day = start.getDay();
       start.setDate(start.getDate() - (day === 0 ? 6 : day - 1));
+
       const end = new Date(start);
       end.setDate(end.getDate() + 6);
       end.setHours(23, 59, 59, 999);
+
       return taskDate >= start && taskDate <= end;
     }
 
@@ -211,10 +216,8 @@ const AdminReport = () => {
     [selectedProject]
   );
 
-
   const filteredData = useMemo(() => {
     const filteredTasks = applyProjectFilter(tasks.filter(isTaskInDateRange));
-
     const inProgress = filteredTasks.filter(task => isStatus(task, INPROGRESS_STATUSES)).length;
     const pending = filteredTasks.filter(task => isStatus(task, PENDING_STATUSES)).length;
     const completed = filteredTasks.filter(task => normalizeStatus(task.status) === "completed").length;
@@ -250,7 +253,6 @@ const AdminReport = () => {
     return { total: filteredTasks.length, completed, inProgress, pending, chartData, teamStats };
   }, [tasks, users, applyProjectFilter, isTaskInDateRange]);
 
-  
   const projectHealth = useMemo(() => {
     const healthTasks = applyProjectFilter(tasks.filter(isTaskInDateRange));
     const total = healthTasks.length;
@@ -258,6 +260,7 @@ const AdminReport = () => {
     if (!total) return { score: 0, status: "No Data", color: "gray", completed: 0, overdue: 0 };
 
     const completed = healthTasks.filter(task => normalizeStatus(task.status) === "completed").length;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -265,8 +268,10 @@ const AdminReport = () => {
       if (normalizeStatus(task.status) === "completed") return false;
       const value = task.dueDate || task.deadline || task.endDate;
       if (!value) return false;
+
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return false;
+
       date.setHours(0, 0, 0, 0);
       return date < today;
     }).length;
@@ -275,15 +280,21 @@ const AdminReport = () => {
     const overdueRate = (overdue / total) * 100;
 
     let status = "Healthy", color = "green";
-    if (score < 40 || overdueRate > 40) { status = "Critical"; color = "red"; }
-    else if (score < 70 || overdueRate > 0) { status = "At Risk"; color = "yellow"; }
+
+    if (score < 40 || overdueRate > 40) {
+      status = "Critical";
+      color = "red";
+    } else if (score < 70 || overdueRate > 0) {
+      status = "At Risk";
+      color = "yellow";
+    }
 
     return { score, status, color, completed, overdue };
   }, [tasks, applyProjectFilter, isTaskInDateRange]);
 
   const reportWorkspaceName = currentWorkspace?.name || currentWorkspace?.workspaceName || "Workspace";
 
-  const selectedProjectData = projectList.find(
+  const selectedProjectData = projects.find(
     project => String(getProjectId(project)) === String(selectedProject)
   );
 
@@ -295,153 +306,151 @@ const AdminReport = () => {
   const reportDateRangeName =
     dateRange === "week" ? "This week" : dateRange === "month" ? "This month" : "All dates";
 
- 
-const handleDownload = () => {
-  const doc = new jsPDF();
+  const handleDownload = () => {
+    const doc = new jsPDF();
 
-  const safeName = String(selectedProjectName || "Report")
-    .replace(/[<>:"/\\|?*]+/g, "-")
-    .replace(/\s+/g, "-");
+    const safeName = String(selectedProjectName || "Report")
+      .replace(/[<>:"/\\|?*]+/g, "-")
+      .replace(/\s+/g, "-");
 
-  const pageWidth = doc.internal.pageSize.getWidth();
+    const pageWidth = doc.internal.pageSize.getWidth();
 
-  // Header
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, 0, pageWidth, 54, "F");
+    // Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageWidth, 54, "F");
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.text("Executive Performance Report", 14, 20);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("Executive Performance Report", 14, 20);
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text(`Workspace: ${reportWorkspaceName}`, 14, 30);
-  doc.text(`Project: ${selectedProjectName}`, 14, 37);
-  doc.text(`Date range: ${reportDateRangeName}`, 14, 44);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Workspace: ${reportWorkspaceName}`, 14, 30);
+    doc.text(`Project: ${selectedProjectName}`, 14, 37);
+    doc.text(`Date range: ${reportDateRangeName}`, 14, 44);
 
-  doc.setTextColor(15, 23, 42);
+    doc.setTextColor(15, 23, 42);
 
-  // Task Performance
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.text("1. Task Performance", 14, 66);
+    // Task Performance
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("1. Task Performance", 14, 66);
 
-  autoTable(doc, {
-    startY: 72,
-    head: [["Task performance", "Value"]],
-    body: [
-      ["Total tasks", filteredData.total],
-      ["Completed", filteredData.completed],
-      ["In progress", filteredData.inProgress],
-      ["Pending", filteredData.pending]
-    ],
-    theme: "striped",
-    headStyles: {
-      fillColor: [30, 41, 59],
-      textColor: [255, 255, 255],
-      fontStyle: "bold"
-    },
-    alternateRowStyles: {
-      fillColor: [248, 250, 252]
-    },
-    bodyStyles: {
-      textColor: [51, 65, 85]
-    },
-    styles: {
-      font: "helvetica",
-      fontSize: 10,
-      cellPadding: 4
-    },
-    margin: {
-      left: 14,
-      right: 14
-    }
-  });
+    autoTable(doc, {
+      startY: 72,
+      head: [["Task performance", "Value"]],
+      body: [
+        ["Total tasks", filteredData.total],
+        ["Completed", filteredData.completed],
+        ["In progress", filteredData.inProgress],
+        ["Pending", filteredData.pending]
+      ],
+      theme: "striped",
+      headStyles: {
+        fillColor: [30, 41, 59],
+        textColor: [255, 255, 255],
+        fontStyle: "bold"
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      },
+      bodyStyles: {
+        textColor: [51, 65, 85]
+      },
+      styles: {
+        font: "helvetica",
+        fontSize: 10,
+        cellPadding: 4
+      },
+      margin: {
+        left: 14,
+        right: 14
+      }
+    });
 
-  // Project Health
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.setTextColor(15, 23, 42);
-  doc.text("2. Project Health", 14, doc.lastAutoTable.finalY + 15);
+    // Project Health
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(15, 23, 42);
+    doc.text("2. Project Health", 14, doc.lastAutoTable.finalY + 15);
 
-  autoTable(doc, {
-    startY: doc.lastAutoTable.finalY + 21,
-    head: [["Project health", "Value"]],
-    body: [
-      ["Health score", `${projectHealth.score}%`],
-      ["Status", projectHealth.status],
-      ["Completed tasks", projectHealth.completed],
-      ["Overdue tasks", projectHealth.overdue]
-    ],
-    theme: "striped",
-    headStyles: {
-      fillColor: [30, 41, 59],
-      textColor: [255, 255, 255],
-      fontStyle: "bold"
-    },
-    alternateRowStyles: {
-      fillColor: [248, 250, 252]
-    },
-    bodyStyles: {
-      textColor: [51, 65, 85]
-    },
-    styles: {
-      font: "helvetica",
-      fontSize: 10,
-      cellPadding: 4
-    },
-    margin: {
-      left: 14,
-      right: 14
-    }
-  });
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 21,
+      head: [["Project health", "Value"]],
+      body: [
+        ["Health score", `${projectHealth.score}%`],
+        ["Status", projectHealth.status],
+        ["Completed tasks", projectHealth.completed],
+        ["Overdue tasks", projectHealth.overdue]
+      ],
+      theme: "striped",
+      headStyles: {
+        fillColor: [30, 41, 59],
+        textColor: [255, 255, 255],
+        fontStyle: "bold"
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      },
+      bodyStyles: {
+        textColor: [51, 65, 85]
+      },
+      styles: {
+        font: "helvetica",
+        fontSize: 10,
+        cellPadding: 4
+      },
+      margin: {
+        left: 14,
+        right: 14
+      }
+    });
 
-  // Team Member Performance
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.setTextColor(15, 23, 42);
-  doc.text("3. Team Member Performance", 14, doc.lastAutoTable.finalY + 15);
+    // Team Member Performance
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(15, 23, 42);
+    doc.text("3. Team Member Performance", 14, doc.lastAutoTable.finalY + 15);
 
-  autoTable(doc, {
-    startY: doc.lastAutoTable.finalY + 21,
-    head: [["Team member", "Assigned", "Completed", "In progress", "Pending"]],
-    body: filteredData.teamStats.length
-      ? filteredData.teamStats.map(m => [
-          m.name,
-          m.assigned,
-          m.completed,
-          m.inProgress,
-          m.pending
-        ])
-      : [["No team data available.", "", "", "", ""]],
-    theme: "striped",
-    headStyles: {
-      fillColor: [30, 41, 59],
-      textColor: [255, 255, 255],
-      fontStyle: "bold"
-    },
-    alternateRowStyles: {
-      fillColor: [248, 250, 252]
-    },
-    bodyStyles: {
-      textColor: [51, 65, 85]
-    },
-    styles: {
-      font: "helvetica",
-      fontSize: 9,
-      cellPadding: 3.5
-    },
-    margin: {
-      left: 14,
-      right: 14
-    }
-  });
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 21,
+      head: [["Team member", "Assigned", "Completed", "In progress", "Pending"]],
+      body: filteredData.teamStats.length
+        ? filteredData.teamStats.map(m => [
+            m.name,
+            m.assigned,
+            m.completed,
+            m.inProgress,
+            m.pending
+          ])
+        : [["No team data available.", "", "", "", ""]],
+      theme: "striped",
+      headStyles: {
+        fillColor: [30, 41, 59],
+        textColor: [255, 255, 255],
+        fontStyle: "bold"
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      },
+      bodyStyles: {
+        textColor: [51, 65, 85]
+      },
+      styles: {
+        font: "helvetica",
+        fontSize: 9,
+        cellPadding: 3.5
+      },
+      margin: {
+        left: 14,
+        right: 14
+      }
+    });
 
-  doc.save(`VisionPM-${safeName}-Report.pdf`);
-};
+    doc.save(`VisionPM-${safeName}-Report.pdf`);
+  };
 
-  
   if (loading) {
     const skeleton = isDarkMode ? "bg-[#111A36]" : "bg-gray-200";
     const card = isDarkMode ? "bg-[#0B1128] border-[#1E293B]" : "bg-white border-gray-100";
@@ -468,7 +477,6 @@ const handleDownload = () => {
     );
   }
 
-  
   const inputClass = `border rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold outline-none ${
     isDarkMode
       ? "bg-[#11182B] border-[#263149] text-gray-200 focus:border-blue-500"
@@ -540,9 +548,11 @@ const handleDownload = () => {
                     >
                       All projects
                     </button>
-                    {projectList.map(project => {
+
+                    {projects.map(project => {
                       const projectId = getProjectId(project);
                       const projectName = project.projectName || project.name;
+
                       return (
                         <button
                           key={projectId}

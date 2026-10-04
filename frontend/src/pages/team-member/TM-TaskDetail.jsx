@@ -90,7 +90,7 @@ const StatusDropdown = ({ value, onChange, isDarkMode }) => {
     </div>
   );
 };
-
+const taskDetailsCache = new Map();
 const TaskDetails = () => {
   const navigate = useNavigate();
   const { taskId } = useParams();
