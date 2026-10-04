@@ -390,9 +390,9 @@ const Tasks = () => {
             </div>
 
             <div className="shrink-0 w-full sm:w-auto lg:absolute lg:right-0 lg:top-10">
-              <div className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-44 rounded-lg">
-                <PrimaryButton text="+ Create Task" onClick={() => setShowModal(true)} />
-              </div>
+              <div className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-44 rounded-lg [&>button]:w-full [&>button]:h-[52px] sm:[&>button]:w-auto sm:[&>button]:h-auto">
+                 <PrimaryButton text="+ Create Task" onClick={() => setShowModal(true)} />
+                 </div>
 
               <div className="hidden lg:block w-44 mt-3 [&>button]:w-full [&>button]:justify-center">
                 {discussion}

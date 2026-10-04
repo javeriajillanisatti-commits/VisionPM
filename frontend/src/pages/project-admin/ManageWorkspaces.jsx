@@ -472,7 +472,7 @@ const openHealthScanner = async workspace => {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight break-words">Workspaces</h1>
             <p className={`mt-2 text-xs sm:text-sm break-words ${t.muted}`}>Create, organize, and switch between workspaces.</p>
           </div>
-          <div className="w-full sm:w-auto shrink-0 self-start sm:self-auto bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+              <div className="w-full sm:w-auto shrink-0 self-start sm:self-auto [&>button]:w-full [&>button]:h-[52px] sm:[&>button]:w-auto sm:[&>button]:h-auto bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
             <PrimaryButton text="+ Create Workspace" onClick={openCreate} />
           </div>
         </div>
