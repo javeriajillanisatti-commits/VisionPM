@@ -25,7 +25,6 @@ const StatusDropdown = ({ value, onChange, isDarkMode }) => {
     { value: "In Progress", label: "In Progress" },
     { value: "Completed", label: "Completed" },
   ];
-  const taskDetailsCache = new Map();
 
   useEffect(() => {
     const handleClickOutside = (event) => {

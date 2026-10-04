@@ -1,5 +1,5 @@
 import { useLiveTick } from "../../hooks/useLiveRefresh";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { getMyTasks } from "../../services/memberService";
 import {
   getMyWorkPlan,
@@ -36,54 +36,81 @@ const TMWorkPlanner = () => {
   const { isDarkMode } = useTheme();
   const [selectedDate, setSelectedDate] = useState(toDateString(new Date()));
   const taskCacheKey = "my-tasks";
-const planCacheKey = selectedDate;
+  const planCacheKey = selectedDate;
 
-const cachedTasks = workPlannerTasksCache.get(taskCacheKey);
-const cachedPlans = workPlannerPlansCache.get(planCacheKey);
+  const cachedTasks = workPlannerTasksCache.get(taskCacheKey);
+  const cachedPlans = workPlannerPlansCache.get(planCacheKey);
 
-const [allTasks, setAllTasks] = useState(cachedTasks || []);
-const [scheduledPlans, setScheduledPlans] = useState(cachedPlans || []);
-const [loading, setLoading] = useState(!cachedPlans);
+  const [allTasks, setAllTasks] = useState(cachedTasks || []);
+  const [scheduledPlans, setScheduledPlans] = useState(cachedPlans || []);
+  const [loading, setLoading] = useState(!cachedPlans);
   const [modalState, setModalState] = useState(emptyModal);
 
-useEffect(() => {
-  const cachedData = workPlannerPlansCache.get(planCacheKey);
-
-  if (cachedData) {
-    setScheduledPlans(cachedData);
-    setLoading(false);
-    fetchPlans(false);
-  } else {
-    fetchPlans(true);
-  }
-}, [fetchPlans, liveTick, planCacheKey]);
-
   const fetchPlans = useCallback(async (showLoader = false) => {
-  const cachedData = workPlannerPlansCache.get(planCacheKey);
+    const cachedData = workPlannerPlansCache.get(planCacheKey);
 
-  if (cachedData) {
-    setScheduledPlans(cachedData);
-    setLoading(false);
-  } else if (showLoader) {
-    setLoading(true);
-  }
-
-  try {
-    const data = await getMyWorkPlan(selectedDate);
-    const freshPlans = data.plans || [];
-
-    workPlannerPlansCache.set(planCacheKey, freshPlans);
-    setScheduledPlans(freshPlans);
-  } catch (error) {
-    console.error("Error fetching work plan:", error);
-
-    if (!cachedData) {
-      setScheduledPlans([]);
+    if (cachedData) {
+      setScheduledPlans(cachedData);
+      setLoading(false);
+    } else if (showLoader) {
+      setLoading(true);
     }
-  } finally {
-    setLoading(false);
-  }
-}, [selectedDate, planCacheKey]);
+
+    try {
+      const data = await getMyWorkPlan(selectedDate);
+      const freshPlans = data.plans || [];
+
+      workPlannerPlansCache.set(planCacheKey, freshPlans);
+      setScheduledPlans(freshPlans);
+    } catch (error) {
+      console.error("Error fetching work plan:", error);
+
+      if (!cachedData) {
+        setScheduledPlans([]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedDate, planCacheKey]);
+
+  const fetchTasks = useCallback(async () => {
+    const cachedData = workPlannerTasksCache.get(taskCacheKey);
+
+    if (cachedData) {
+      setAllTasks(cachedData);
+    }
+
+    try {
+      const data = await getMyTasks();
+      const freshTasks = data.tasks || data || [];
+
+      workPlannerTasksCache.set(taskCacheKey, freshTasks);
+      setAllTasks(freshTasks);
+    } catch (error) {
+      console.error("Error fetching assigned tasks:", error);
+
+      if (!cachedData) {
+        setAllTasks([]);
+      }
+    }
+  }, [taskCacheKey]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks, liveTick]);
+
+  useEffect(() => {
+    const cachedData = workPlannerPlansCache.get(planCacheKey);
+
+    if (cachedData) {
+      setScheduledPlans(cachedData);
+      setLoading(false);
+      fetchPlans(false);
+    } else {
+      fetchPlans(true);
+    }
+  }, [fetchPlans, planCacheKey, liveTick]);
+
   // Remove completed tasks from planner
   const isCompleted = task =>
     String(task?.status || "").trim().toLowerCase() === "completed";

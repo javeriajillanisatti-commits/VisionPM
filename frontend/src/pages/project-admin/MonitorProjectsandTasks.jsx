@@ -103,6 +103,12 @@ const [loading, setLoading] = useState(!cachedMonitorData);
   }
 }, [workspaceId]);
 
+useEffect(() => {
+  if (!liveTick) return;
+
+  loadData(true);
+}, [liveTick, loadData]);
+
   // Calculate project statistics
   const getProjectStats = project => {
     const list = tasks.filter(

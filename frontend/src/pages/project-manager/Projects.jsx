@@ -22,10 +22,7 @@ const Projects = () => {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const cacheKey = currentWorkspaceId || "all";
-const cachedProjects = projectsCache.get(cacheKey);
 
-const [projects, setProjects] = useState(cachedProjects || []);
   const [editingProject, setEditingProject] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("");
@@ -34,6 +31,17 @@ const [projects, setProjects] = useState(cachedProjects || []);
   const [showDesc, setShowDesc] = useState(false);
   const [longDesc, setLongDesc] = useState(false);
   const [activeWorkspace, setActiveWorkspace] = useState(null);
+  const currentWorkspaceId =
+  state?.id ||
+  state?._id ||
+  workspaceId ||
+  activeWorkspace?.id ||
+  activeWorkspace?._id;
+
+const cacheKey = currentWorkspaceId || "all";
+const cachedProjects = projectsCache.get(cacheKey);
+
+const [projects, setProjects] = useState(cachedProjects || []);
   const [viewMode, setViewMode] = useState("grid");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -50,7 +58,7 @@ const [projects, setProjects] = useState(cachedProjects || []);
       setActiveWorkspace(null);
     }
   }, []);
-  const currentWorkspaceId = state?.id || state?._id || workspaceId || activeWorkspace?.id || activeWorkspace?._id;
+  
   const workspaceName = state?.name || activeWorkspace?.name || activeWorkspace?.workspaceName || "Workspace";
   const workspaceDesc = state?.description || activeWorkspace?.description || "No description available.";
 

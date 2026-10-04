@@ -132,8 +132,7 @@ const fetchAuditLogs = useCallback(async () => {
   if (!hasLoadedOnce.current) return;
 
   fetchAuditLogs();
-}, [liveTick]);
-
+}, [liveTick, fetchAuditLogs]);
   const getActionStyle = action =>
     ACTION_STYLES[action]?.[isDarkMode ? 0 : 1] ||
     (isDarkMode ? "bg-gray-500/10 text-gray-400 border-gray-500/20" : "bg-gray-100 text-gray-600 border-gray-200");

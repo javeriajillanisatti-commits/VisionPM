@@ -1,7 +1,6 @@
 import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
-import { io } from "socket.io-client";
 import UserTable from "../../components/admin/UserTable";
 import UserQuickViewDrawer from "../../components/admin/UserQuickViewDrawer";
 import { useWorkspace } from "../../context/WorkspaceContext";

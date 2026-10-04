@@ -109,60 +109,6 @@ const TaskDetails = () => {
     }
   }, []);
 
-  const fetchTaskFullDetails = useCallback(async (taskId) => {
-    try {
-      const response = await getTaskById(taskId);
-      const liveTask = response.task || response;
-      
-      if (liveTask) {
-        let resolvedAssignees = [];
-        if (Array.isArray(liveTask.assignedTo)) {
-          resolvedAssignees = liveTask.assignedTo.map((member) => {
-            if (typeof member === "object" && member !== null) return member;
-            return { _id: member };
-          });
-        } else if (liveTask.assignedTo) {
-          resolvedAssignees = typeof liveTask.assignedTo === "object" ? [liveTask.assignedTo] : [{ _id: liveTask.assignedTo }];
-        }
-
-        const targetProjectId = liveTask.project?._id || liveTask.project || liveTask.projectId;
-
-        setTask({
-          id: liveTask._id || liveTask.id,
-          projectId: targetProjectId,
-          taskTitle: liveTask.taskTitle || liveTask.title || "Untitled Task",
-          description: liveTask.description || "",
-          status: liveTask.status || "Todo",
-          priority: liveTask.priority || "Medium",
-          size: liveTask.size || "M", 
-          requiredSkills: liveTask.requiredSkills || [], 
-          deadline: liveTask.deadline ? liveTask.deadline.substring(0, 10) : "",
-          assignees: resolvedAssignees,
-          allocationMode: liveTask.allocationMode || "manual",
-          assigneeWorkloads: Array.isArray(liveTask.assigneeWorkloads)
-            ? liveTask.assigneeWorkloads.map((item) => ({
-                member: item.member?._id || item.member,
-                workload: Number(item.workload) || 0,
-              }))
-            : buildEqualAllocations(resolvedAssignees, liveTask.size || "M")
-        });
-
-        if (liveTask.subtasks) setSubtasks(liveTask.subtasks);
-
-        if (targetProjectId) {
-          try {
-            const response = await getProjectMembers(targetProjectId);
-            setWorkspaceMembers(response.members || []);
-          } catch (err) {
-            console.error("Error loading project members:", err);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error loading task real-time details:", error);
-    }
-  }, [buildEqualAllocations]);
-
   useEffect(() => {
   if (!currentTaskId) return;
 

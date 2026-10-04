@@ -1,5 +1,4 @@
-import { useLiveTick } from "../../hooks/useLiveRefresh";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { useParams, Link } from "react-router-dom";
 import PrimaryButton from "../../components/buttons/PrimaryButton";
@@ -16,7 +15,7 @@ const getTaskId = (task) => task?._id || task?.id;
 const PRIORITY_WEIGHT = { High: 3, Medium: 2, Low: 1 };
 const weightOf = (t) => PRIORITY_WEIGHT[t.priority] || 0;
 const createdOf = (t) => new Date(t.createdAt || t.id);
-const tasksPageCache = new Map();
+
 const SORTERS = {
   priority_high: (a, b) => weightOf(b) - weightOf(a),
   priority_low: (a, b) => weightOf(a) - weightOf(b),
@@ -37,23 +36,13 @@ const EmptyState = ({ icon: Icon, title, text }) => (
 );
 
 const Tasks = () => {
-  const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
   const { projectId } = useParams();
   const { isDarkMode } = useTheme();
-const cacheKey = projectId || "all";
-const cachedTasksData = tasksPageCache.get(cacheKey);
-
-const [projectTitle, setProjectTitle] = useState(
-  cachedTasksData?.projectTitle || "Project Tasks"
-);
-const [projectDescription, setProjectDescription] = useState(
-  cachedTasksData?.projectDescription || "No description available."
-);
-const [projectInfo, setProjectInfo] = useState(
-  cachedTasksData?.projectInfo || null
-);
-const [showModal, setShowModal] = useState(false);
-const [tasks, setTasks] = useState(cachedTasksData?.tasks || []);
+  const [projectTitle, setProjectTitle] = useState("Project Tasks");
+  const [projectDescription, setProjectDescription] = useState("No description available.");
+  const [projectInfo, setProjectInfo] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [tasks, setTasks] = useState([]);
   const [activeTab, setActiveTab] = useState("All Tasks");
   const [viewMode, setViewMode] = useState("grid");
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,106 +59,51 @@ const [tasks, setTasks] = useState(cachedTasksData?.tasks || []);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
   const [visibleCount, setVisibleCount] = useState(6);
 
-  const applyProject = (res) => {
-  const proj = res?.project || res;
-  if (!proj) return;
+  const applyProject = useCallback((res) => {
+    const proj = res?.project || res;
+    if (!proj) return;
+    setProjectInfo(proj);
+    setProjectTitle(proj.projectName || proj.title || "Project Tasks");
+    setProjectDescription(proj.description || "No description available.");
+  }, []);
 
-  const title = proj.projectName || proj.title || "Project Tasks";
-  const description = proj.description || "No description available.";
+  const applyTasks = useCallback((res) => setTasks(res?.tasks || (Array.isArray(res) ? res : [])), []);
 
-  setProjectInfo(proj);
-  setProjectTitle(title);
-  setProjectDescription(description);
-
-  const existingCache = tasksPageCache.get(cacheKey) || {};
-  tasksPageCache.set(cacheKey, {
-    ...existingCache,
-    projectInfo: proj,
-    projectTitle: title,
-    projectDescription: description,
-  });
-};
-
-const applyTasks = (res) => {
-  const freshTasks = res?.tasks || (Array.isArray(res) ? res : []);
-
-  setTasks(freshTasks);
-
-  const existingCache = tasksPageCache.get(cacheKey) || {};
-  tasksPageCache.set(cacheKey, {
-    ...existingCache,
-    tasks: freshTasks,
-  });
-};
-
+  // Poll project + tasks every second, and on focus / tab visible.
   useEffect(() => {
-  if (!projectId) return;
+    if (!projectId) return;
+    let cancelled = false;
+    let requestInFlight = false;
 
-  let cancelled = false;
-  let requestInFlight = false;
-
-  const sync = async () => {
-    if (cancelled || requestInFlight) return;
-
-    requestInFlight = true;
-
-    try {
-      const projResponse = await getProjectById(projectId);
-
-      if (!cancelled) {
-        applyProject(projResponse);
+    const sync = async () => {
+      if (cancelled || requestInFlight) return;
+      requestInFlight = true;
+      try {
+        const projResponse = await getProjectById(projectId);
+        if (!cancelled) applyProject(projResponse);
+        const taskResponse = await getTasksByProject(projectId);
+        if (!cancelled) applyTasks(taskResponse);
+      } catch (error) {
+        if (!cancelled) console.error("Error fetching tasks pipeline elements:", error);
+      } finally {
+        requestInFlight = false;
       }
+    };
+    const onVisible = () => document.visibilityState === "visible" && sync();
 
-      const taskResponse = await getTasksByProject(projectId);
-
-      if (!cancelled) {
-        applyTasks(taskResponse);
-        setVisibleCount(6);
-      }
-    } catch (error) {
-      if (!cancelled) {
-        console.error("Error fetching tasks pipeline elements:", error);
-      }
-    } finally {
-      requestInFlight = false;
-    }
-  };
-
-  const cachedData = tasksPageCache.get(cacheKey);
-
-  if (cachedData) {
-    setProjectInfo(cachedData.projectInfo || null);
-    setProjectTitle(cachedData.projectTitle || "Project Tasks");
-    setProjectDescription(
-      cachedData.projectDescription || "No description available."
-    );
-    setTasks(cachedData.tasks || []);
-    setVisibleCount(6);
-
-    // Background refresh, no UI reset
     sync();
-  } else {
-    // First visit
-    sync();
-  }
+  
+    window.addEventListener("focus", sync);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      
+      window.removeEventListener("focus", sync);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [projectId, applyProject, applyTasks]);
 
-  const onVisible = () => {
-    if (document.visibilityState === "visible") {
-      sync();
-    }
-  };
-
-  window.addEventListener("focus", sync);
-  document.addEventListener("visibilitychange", onVisible);
-
-  return () => {
-    cancelled = true;
-    window.removeEventListener("focus", sync);
-    document.removeEventListener("visibilitychange", onVisible);
-  };
-}, [projectId, cacheKey, liveTick]);
-
-  const fetchProjectMetaAndTasks = async () => {
+  const fetchProjectMetaAndTasks = useCallback(async () => {
     try {
       applyProject(await getProjectById(projectId));
       applyTasks(await getTasksByProject(projectId));
@@ -177,7 +111,7 @@ const applyTasks = (res) => {
     } catch (error) {
       console.error("Error fetching tasks pipeline elements:", error);
     }
-  };
+  }, [projectId, applyProject, applyTasks]);
 
   // Real-time task sync: same tab, other tabs, and immediate backend refresh.
   useEffect(() => {
@@ -266,7 +200,7 @@ const applyTasks = (res) => {
       channel?.removeEventListener("message", onBroadcast);
       channel?.close();
     };
-  }, [projectId]);
+  }, [projectId, applyTasks]);
 
   const getProcessedTasks = () => {
     let result = tasks.filter(
