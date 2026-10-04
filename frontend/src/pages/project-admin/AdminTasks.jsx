@@ -132,7 +132,7 @@ const AdminTasks = () => {
 
   if (cachedData) {
     setTasks(cachedData.tasks);
-    
+
     if (cachedData.project) {
       setProject(cachedData.project);
     }
@@ -143,7 +143,13 @@ const AdminTasks = () => {
 
   fetchProject();
   fetchTasks();
-}, [projectId, fetchProject, fetchTasks, liveTick]);
+}, [projectId, fetchProject, fetchTasks]);
+
+useEffect(() => {
+  if (!liveTick || !projectId) return;
+
+  fetchTasks();
+}, [liveTick, projectId, fetchTasks]);
 
   useEffect(() => setCurrentPage(1), [searchTerm, sortBy, viewMode]);
 

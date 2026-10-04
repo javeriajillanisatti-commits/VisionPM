@@ -11,6 +11,7 @@ import { ArrowLeft, AlertTriangle, Inbox, ClipboardList } from "lucide-react";
 import { createTask, getTasksByProject, deleteTask } from "../../services/taskService";
 import { getProjectById } from "../../services/projectService";
 
+const tasksCache = new Map();
 const getTaskId = (task) => task?._id || task?.id;
 const PRIORITY_WEIGHT = { High: 3, Medium: 2, Low: 1 };
 const weightOf = (t) => PRIORITY_WEIGHT[t.priority] || 0;
@@ -69,55 +70,73 @@ const Tasks = () => {
 
   const applyTasks = useCallback((res) => setTasks(res?.tasks || (Array.isArray(res) ? res : [])), []);
 
-  // Poll project + tasks every second, and on focus / tab visible.
-  useEffect(() => {
-    if (!projectId) return;
-    let cancelled = false;
-    let requestInFlight = false;
-
-    const sync = async () => {
-      if (cancelled || requestInFlight) return;
-      requestInFlight = true;
-      try {
-        const projResponse = await getProjectById(projectId);
-        if (!cancelled) applyProject(projResponse);
-        const taskResponse = await getTasksByProject(projectId);
-        if (!cancelled) applyTasks(taskResponse);
-      } catch (error) {
-        if (!cancelled) console.error("Error fetching tasks pipeline elements:", error);
-      } finally {
-        requestInFlight = false;
-      }
-    };
-    const onVisible = () => document.visibilityState === "visible" && sync();
-
-    sync();
-  
-    window.addEventListener("focus", sync);
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      cancelled = true;
-      
-      window.removeEventListener("focus", sync);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [projectId, applyProject, applyTasks]);
-
   const fetchProjectMetaAndTasks = useCallback(async () => {
     try {
-      applyProject(await getProjectById(projectId));
-      applyTasks(await getTasksByProject(projectId));
+      const [projectResponse, taskResponse] = await Promise.all([
+        getProjectById(projectId),
+        getTasksByProject(projectId),
+      ]);
+      const projectData = projectResponse?.project || projectResponse;
+      const taskData = taskResponse?.tasks || (Array.isArray(taskResponse) ? taskResponse : []);
+
+      tasksCache.set(projectId, { project: projectData, tasks: taskData });
+      applyProject(projectResponse);
+      applyTasks(taskResponse);
       setVisibleCount(6);
     } catch (error) {
       console.error("Error fetching tasks pipeline elements:", error);
     }
   }, [projectId, applyProject, applyTasks]);
 
-  // Real-time task sync: same tab, other tabs, and immediate backend refresh.
+  useEffect(() => {
+    if (!projectId) return;
+
+    const cachedData = tasksCache.get(projectId);
+
+    if (cachedData) {
+      applyProject(cachedData.project);
+      applyTasks(cachedData.tasks);
+      return;
+    }
+
+    const loadTasks = async () => {
+      try {
+        const [projectResponse, taskResponse] = await Promise.all([
+          getProjectById(projectId),
+          getTasksByProject(projectId),
+        ]);
+
+        const projectData = projectResponse?.project || projectResponse;
+        const taskData = taskResponse?.tasks || (Array.isArray(taskResponse) ? taskResponse : []);
+
+        tasksCache.set(projectId, {
+          project: projectData,
+          tasks: taskData,
+        });
+
+        applyProject(projectResponse);
+        applyTasks(taskResponse);
+      } catch (error) {
+        console.error("Error fetching tasks pipeline elements:", error);
+      }
+    };
+
+    loadTasks();
+  }, [projectId, applyProject, applyTasks]);
+
   useEffect(() => {
     const refresh = async () => {
       try {
-        applyTasks(await getTasksByProject(projectId));
+        const response = await getTasksByProject(projectId);
+        const taskList = response?.tasks || (Array.isArray(response) ? response : []);
+        const cachedData = tasksCache.get(projectId);
+
+        tasksCache.set(projectId, {
+          project: cachedData?.project || null,
+          tasks: taskList,
+        });
+
+        applyTasks(response);
       } catch (error) {
         console.warn("Unable to refresh tasks after real-time update:", error);
       }
@@ -283,6 +302,14 @@ const Tasks = () => {
       await deleteTask(deleteTaskId);
       setTasks((prev) => prev.filter((t) => getTaskId(t) !== deleteTaskId));
 
+      const cachedData = tasksCache.get(projectId);
+      if (cachedData) {
+        tasksCache.set(projectId, {
+          ...cachedData,
+          tasks: cachedData.tasks.filter((t) => getTaskId(t) !== deleteTaskId),
+        });
+      }
+
       const detail = { taskId: deleteTaskId, projectId, deletedAt: Date.now() };
       window.dispatchEvent(new CustomEvent("vpm:task-deleted", { detail }));
       try {
@@ -302,7 +329,6 @@ const Tasks = () => {
     }
   };
 
-  // Shared pieces (rendered in mobile / laptop / tablet slots below)
   const filters = <TaskFilters activeFilter={activeTab} setActiveFilter={setActiveTab} counts={filterCounts} />;
   const discussion = <ProjectDiscussion project={projectInfo} />;
   const controls = (
@@ -368,16 +394,13 @@ const Tasks = () => {
                 <PrimaryButton text="+ Create Task" onClick={() => setShowModal(true)} />
               </div>
 
-              {/* Laptop: Project Discussion under Create Task */}
               <div className="hidden lg:block w-44 mt-3 [&>button]:w-full [&>button]:justify-center">
                 {discussion}
               </div>
             </div>
           </div>
 
-          {/* Task controls */}
           <div className="w-full flex flex-col gap-2 shrink-0 pt-0 sm:pt-2 lg:pt-5">
-            {/* Mobile: 2x2 grid -> [All Tasks | Project Discussion] / [Search | Sort By] */}
             <div className="sm:hidden w-full grid grid-cols-2 gap-2">
               <div className="min-w-0 [&>*]:w-full [&_select]:w-full [&_select]:h-10">{filters}</div>
               <div className="min-w-0 [&>button]:w-full [&>button]:h-10 [&>button]:justify-center [&>button_svg]:hidden">
@@ -386,20 +409,16 @@ const Tasks = () => {
               <div className="col-span-2 min-w-0">{controls}</div>
             </div>
 
-            {/* Tablet / laptop: status filters */}
             <div className="hidden sm:block min-w-0 pt-2 pb-2 max-w-full overflow-x-auto custom-scrollbar scrollbar-thin">
               {filters}
             </div>
 
-            {/* Tablet / laptop: Search + Sort */}
             <div className="hidden sm:block w-full min-w-0">{controls}</div>
 
-            {/* Tablet only: Project Discussion (laptop shows it under Create Task) */}
             <div className="hidden sm:block lg:hidden">{discussion}</div>
           </div>
         </div>
 
-        {/* Task cards */}
         <div className="w-full min-h-[200px] sm:min-h-[400px] min-w-0 pt-2">
           {paginatedTasks.length > 0 ? (
             <div className="flex flex-col items-center">

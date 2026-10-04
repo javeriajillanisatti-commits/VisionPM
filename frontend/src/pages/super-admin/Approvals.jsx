@@ -323,19 +323,23 @@ const fetchRequests = useCallback(
   [showToast]
 );
 
-  useEffect(() => {
+useEffect(() => {
   const cachedData = approvalsCache.get(cacheKey);
 
   if (cachedData) {
     setRequests(cachedData);
     setInitialLoading(false);
-
-    // Background refresh without showing skeleton
     fetchRequests(false);
   } else {
     fetchRequests(true);
   }
-}, [fetchRequests, liveTick]);
+}, [fetchRequests]);
+
+useEffect(() => {
+  if (!liveTick) return;
+
+  fetchRequests(false);
+}, [liveTick, fetchRequests]);
 
   useEffect(() => setCurrentPage(1), [statusFilter]);
   const requestStatusChange = (request, newStatus) => {

@@ -9,6 +9,7 @@ import { useTheme } from "../../context/ThemeContext";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const QUICK_REACTIONS = ["❤️", "👍", "🔥", "🚀", "😂", "👏", "✅"];
+const discussionCache = new Map();
 
 const decodeUserId = (token) => {
   try {
@@ -42,7 +43,6 @@ const ProjectDiscussion = ({ project }) => {
   const [denied, setDenied] = useState(false);
   const [error, setError] = useState("");
   const [canModerate, setCanModerate] = useState(false);
-
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -88,26 +88,47 @@ const ProjectDiscussion = ({ project }) => {
     if (!token) return undefined;
 
     let mounted = true;
+    const cachedData = discussionCache.get(projectId);
+
+    if (cachedData) {
+      setMessages(cachedData.messages || []);
+      setCanModerate(Boolean(cachedData.canModerate));
+      setLoading(false);
+      setDenied(false);
+      setError("");
+      requestAnimationFrame(scrollToBottom);
+    } else {
+      setLoading(true);
+      setDenied(false);
+      setError("");
+    }
+
     const socket = io(API_URL, { auth: { token } });
     socketRef.current = socket;
-    setLoading(true);
-    setDenied(false);
 
-    getProjectDiscussion(projectId)
-      .then((data) => {
-        if (!mounted) return;
-        setMessages(data.messages || []);
-        setCanModerate(Boolean(data.canModerate));
+    if (!cachedData) {
+      getProjectDiscussion(projectId)
+        .then((data) => {
+          if (!mounted) return;
 
-        setLoading(false);
-        scrollToBottom();
-      })
-      .catch((err) => {
-        if (!mounted) return;
-        setLoading(false);
-        if (err?.response?.status === 403) setDenied(true);
-        else setError(err?.response?.data?.message || "Unable to load project discussion.");
-      });
+          const discussionData = {
+            messages: data.messages || [],
+            canModerate: Boolean(data.canModerate),
+          };
+
+          discussionCache.set(projectId, discussionData);
+          setMessages(discussionData.messages);
+          setCanModerate(discussionData.canModerate);
+          setLoading(false);
+          scrollToBottom();
+        })
+        .catch((err) => {
+          if (!mounted) return;
+          setLoading(false);
+          if (err?.response?.status === 403) setDenied(true);
+          else setError(err?.response?.data?.message || "Unable to load project discussion.");
+        });
+    }
 
     socket.on("project_discussion_access_denied", () => {
       if (!mounted) return;
@@ -117,24 +138,86 @@ const ProjectDiscussion = ({ project }) => {
 
     socket.on("project_message_received", (message) => {
       if (!mounted) return;
-      setMessages((prev) => prev.some((item) => String(item._id) === String(message._id)) ? prev : [...prev, message]);
+
+      setMessages((prev) => {
+        const next = prev.some((item) => String(item._id) === String(message._id))
+          ? prev
+          : [...prev, message];
+
+        const cached = discussionCache.get(projectId);
+        discussionCache.set(projectId, {
+          messages: next,
+          canModerate: cached?.canModerate || false,
+        });
+
+        return next;
+      });
+
       scrollToBottom();
     });
 
     socket.on("project_message_updated", ({ messageId, message, editedAt }) => {
-      setMessages((prev) => prev.map((item) => String(item._id) === String(messageId) ? { ...item, message, edited: true, editedAt } : item));
+      setMessages((prev) => {
+        const next = prev.map((item) =>
+          String(item._id) === String(messageId)
+            ? { ...item, message, edited: true, editedAt }
+            : item
+        );
+
+        const cached = discussionCache.get(projectId);
+        discussionCache.set(projectId, {
+          messages: next,
+          canModerate: cached?.canModerate || false,
+        });
+
+        return next;
+      });
     });
 
     socket.on("project_message_deleted", ({ messageId }) => {
-      setMessages((prev) => prev.filter((item) => String(item._id) !== String(messageId)));
+      setMessages((prev) => {
+        const next = prev.filter((item) => String(item._id) !== String(messageId));
+
+        const cached = discussionCache.get(projectId);
+        discussionCache.set(projectId, {
+          messages: next,
+          canModerate: cached?.canModerate || false,
+        });
+
+        return next;
+      });
     });
 
     socket.on("project_message_hidden_for_me", ({ messageId }) => {
-      setMessages((prev) => prev.filter((item) => String(item._id) !== String(messageId)));
+      setMessages((prev) => {
+        const next = prev.filter((item) => String(item._id) !== String(messageId));
+
+        const cached = discussionCache.get(projectId);
+        discussionCache.set(projectId, {
+          messages: next,
+          canModerate: cached?.canModerate || false,
+        });
+
+        return next;
+      });
     });
 
     socket.on("project_reaction_updated", ({ messageId, reactions }) => {
-      setMessages((prev) => prev.map((item) => String(item._id) === String(messageId) ? { ...item, reactions } : item));
+      setMessages((prev) => {
+        const next = prev.map((item) =>
+          String(item._id) === String(messageId)
+            ? { ...item, reactions }
+            : item
+        );
+
+        const cached = discussionCache.get(projectId);
+        discussionCache.set(projectId, {
+          messages: next,
+          canModerate: cached?.canModerate || false,
+        });
+
+        return next;
+      });
     });
 
     socket.on("project_user_typing", ({ userId, fullName, isTyping }) => {
@@ -144,7 +227,6 @@ const ProjectDiscussion = ({ project }) => {
         return prev.filter((u) => String(u.id) !== String(userId));
       });
     });
-
 
     socket.on("project_discussion_joined", () => setLoading(false));
     socket.on("project_discussion_error", ({ message }) => setError(message || "Discussion action failed."));
@@ -168,7 +250,6 @@ const ProjectDiscussion = ({ project }) => {
       if (reactionPickerRef.current && !reactionPickerRef.current.contains(event.target) && !event.target.closest("[data-reaction-emoji-picker]")) {
         setPickerFor(null);
       }
-      // Close the quick-reaction bar when clicking anywhere outside it.
       if (!event.target.closest("[data-reaction-bar]")) {
         setReactionBarFor(null);
       }
@@ -334,7 +415,6 @@ const ProjectDiscussion = ({ project }) => {
   const openReactionPicker = (event, messageId) => {
     const anchor = event.currentTarget;
     reactionAnchorRef.current = anchor;
-    // Calculate the position immediately so the picker never waits for a second frame.
     positionReactionPicker(anchor);
     setPickerFor(messageId);
     setOpenMenu(null);
@@ -345,7 +425,6 @@ const ProjectDiscussion = ({ project }) => {
   const openInputEmojiPicker = (event) => {
     const anchor = event.currentTarget;
     inputEmojiButtonRef.current = anchor;
-    // Calculate the position immediately so the picker opens on the same interaction.
     positionInputEmojiPicker(anchor);
     setShowInputEmoji(true);
     setPickerFor(null);
@@ -388,8 +467,7 @@ const ProjectDiscussion = ({ project }) => {
   if (denied || !canOpenDiscussion) return null;
 
   return (
-    <>
-      <button
+    <><button
         type="button"
         onClick={() => setIsOpen(true)}
         className={`group min-w-0 w-full sm:w-auto justify-center inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl border font-semibold text-[11px] sm:text-sm shadow-sm transition-all hover:-translate-y-0.5 hover:bg-blue-600 hover:border-blue-600 hover:text-white ${isDarkMode ? "bg-slate-900 border-slate-700 text-slate-100" : "bg-white border-gray-200 text-gray-800"}`}
@@ -407,7 +485,6 @@ const ProjectDiscussion = ({ project }) => {
                 <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg sm:rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0"><MessageCircle size={18} /></div>
                 <div className="min-w-0">
                   <div className={`font-bold text-sm sm:text-base truncate ${isDarkMode ? "text-white" : "text-gray-900"}`}>Project Discussion</div>
-
                 </div>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -460,7 +537,6 @@ const ProjectDiscussion = ({ project }) => {
                           {!mine && isManagerMessage && <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 font-bold">PM</span>}
                           <span className={`text-[9px] ${isDarkMode ? "text-slate-500" : "text-gray-400"}`}>{item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}</span>
                         </div>
-
                         <div className="relative">
                           <div className={`relative max-w-full px-3 pr-9 sm:px-3.5 sm:pr-3.5 py-2 sm:py-2.5 rounded-2xl shadow-sm ${mine ? "bg-blue-600 text-white rounded-tr-sm" : isDarkMode ? "bg-slate-800 text-slate-100 border border-slate-700 rounded-tl-sm" : "bg-white text-gray-800 border border-gray-200 rounded-tl-sm"}`}>
                             <p className="text-[13px] sm:text-sm leading-relaxed whitespace-pre-wrap break-words">{item.message}</p>

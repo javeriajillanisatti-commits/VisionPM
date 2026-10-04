@@ -76,11 +76,8 @@ const AdminReport = () => {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(() => {
-  const cacheKey = workspaceId || "all";
-  return !adminReportCache.has(cacheKey);
-});
-  const hasLoadedOnce = useRef(false);
+ const [loading, setLoading] = useState(true);
+const hasLoadedOnce = useRef(false);
   const [projectOpen, setProjectOpen] = useState(false);
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
 
@@ -178,8 +175,14 @@ const AdminReport = () => {
   }, [workspaceId]);
 
   useEffect(() => {
-    loadData(true);
-  }, [loadData, liveTick]);
+  loadData(true);
+}, [loadData]);
+
+useEffect(() => {
+  if (!liveTick) return;
+
+  loadData(false);
+}, [liveTick, loadData]);
 
   const isTaskInDateRange = useCallback(task => {
     if (dateRange === "all") return true;
