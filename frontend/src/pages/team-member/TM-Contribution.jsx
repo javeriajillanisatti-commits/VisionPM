@@ -84,36 +84,59 @@ const [loading, setLoading] = useState(!cachedContribution);
 
   fetchProjects();
 }, []);
+// Load contribution data
+useEffect(() => {
+  if (!selectedProjectId) {
+    setTasks([]);
+    setSelectedTask(null);
+    setProfile(emptyProfile);
+    setLoading(false);
+    return;
+  }
 
-  // Load contribution data
-  useEffect(() => {
-    if (!selectedProjectId) {
-      setTasks([]);
+  const cacheKey = selectedProjectId;
+  const cachedData = tmContributionDataCache.get(cacheKey);
+
+  if (cachedData) {
+    setProfile(cachedData.profile || emptyProfile);
+    setTasks(cachedData.tasks || []);
+    setLoading(false);
+
+    return;
+  }
+
+  const fetchContribution = async () => {
+    try {
+      setLoading(true);
+      setError("");
       setSelectedTask(null);
+
+      const data = await getMyContribution(selectedProjectId);
+
+      const contributionData = {
+        profile: data.profile || emptyProfile,
+        tasks: data.tasks || [],
+      };
+
+      tmContributionDataCache.set(cacheKey, contributionData);
+
+      setProfile(contributionData.profile);
+      setTasks(contributionData.tasks);
+    } catch (err) {
+      console.error("Error fetching contribution:", err);
+      setError(
+        err?.response?.data?.message ||
+          "Unable to load contribution data."
+      );
       setProfile(emptyProfile);
-      return;
+      setTasks([]);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const fetchContribution = async () => {
-      try {
-        setLoading(true);
-        setError("");
-        setSelectedTask(null);
-        const data = await getMyContribution(selectedProjectId);
-        setProfile(data.profile || emptyProfile);
-        setTasks(data.tasks || []);
-      } catch (err) {
-        console.error("Error fetching contribution:", err);
-        setError(err?.response?.data?.message || "Unable to load contribution data.");
-        setProfile(emptyProfile);
-        setTasks([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchContribution();
-  }, [selectedProjectId, liveTick]);
+  fetchContribution();
+}, [selectedProjectId]);
 
   // Handle project and task selection
   const handleNodeClick = taskId => setSelectedTask(tasks.find(t => t._id === taskId) || null);
@@ -122,7 +145,28 @@ const [loading, setLoading] = useState(!cachedContribution);
     setSelectedTask(null);
     sessionStorage.setItem("tmContributionProjectId", id);
   };
+ useEffect(() => {
+  if (!liveTick || !selectedProjectId) return;
 
+  getMyContribution(selectedProjectId)
+    .then(data => {
+      const contributionData = {
+        profile: data.profile || emptyProfile,
+        tasks: data.tasks || [],
+      };
+
+      tmContributionDataCache.set(
+        selectedProjectId,
+        contributionData
+      );
+
+      setProfile(contributionData.profile);
+      setTasks(contributionData.tasks);
+    })
+    .catch(error => {
+      console.error("Error refreshing contribution:", error);
+    });
+}, [liveTick, selectedProjectId]);
   // Open task details
   const handleViewDetails = task => {
     if (!task?._id) return;

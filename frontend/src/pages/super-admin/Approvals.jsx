@@ -8,6 +8,7 @@ import StatsCard from "../../components/cards/StatsCard";
 
 const PAGE_SIZE = 5;
 const approvalsCache = new Map();
+const cvDetailsCache = new Map();
 
 const AVATAR_COLORS = [
   ["bg-blue-100", "text-blue-700", "bg-blue-500/15", "text-blue-300"],
@@ -386,20 +387,43 @@ const fetchRequests = useCallback(
     }
   };
 
-  // Load CV details
-  const handleViewCV = async (request) => {
-    setCvLoading(true);
-    try {
-      const cvData = await approvalService.getCVDetails(request._id);
-      setSelectedRequest(cvData);
-      setShowCVModal(true);
-    } catch (error) {
-      console.error("CV Details Error:", error.response?.data || error.message || error);
-      showToast(error.response?.data?.message || error.message || "Unable to load CV details", "error");
-    } finally {
-      setCvLoading(false);
-    }
-  };
+// Load CV details
+const handleViewCV = async (request) => {
+  const cacheKey = String(request._id);
+  const cachedCV = cvDetailsCache.get(cacheKey);
+
+  if (cachedCV) {
+    setSelectedRequest(cachedCV);
+    setShowCVModal(true);
+    setCvLoading(false);
+    return;
+  }
+
+  setCvLoading(true);
+
+  try {
+    const cvData = await approvalService.getCVDetails(request._id);
+
+    cvDetailsCache.set(cacheKey, cvData);
+
+    setSelectedRequest(cvData);
+    setShowCVModal(true);
+  } catch (error) {
+    console.error(
+      "CV Details Error:",
+      error.response?.data || error.message || error
+    );
+
+    showToast(
+      error.response?.data?.message ||
+        error.message ||
+        "Unable to load CV details",
+      "error"
+    );
+  } finally {
+    setCvLoading(false);
+  }
+};
 
   const totalReq = requests.length;
   const pendingReq = requests.filter((r) => r.accountStatus === "Pending").length;

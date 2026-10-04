@@ -101,12 +101,16 @@ const [loading, setLoading] = useState(!cachedMonitorData);
       setLoading(false);
     }
   }
-}, [workspaceId]);
+}, [workspaceId]); 
 
 useEffect(() => {
-  if (!liveTick) return;
+  loadData(false);
+}, [workspaceId, loadData]);
 
-  loadData(true);
+useEffect(() => { 
+  if (!liveTick) return; 
+ 
+  loadData(true); 
 }, [liveTick, loadData]);
 
   // Calculate project statistics

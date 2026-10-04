@@ -98,61 +98,81 @@ const [projects, setProjects] = useState(cachedProjects || []);
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (!currentWorkspaceId) {
-      setProjects([]);
-      return;
-    }
-   let cancelled = false;
-    let requestInFlight = false;
-    const syncProjects = async () => {
-      if (cancelled || requestInFlight) return;
-      requestInFlight = true;
-      try {
-      const response = await getProjectsByWorkspace(currentWorkspaceId);
-        if (cancelled) return;
-     const nextProjects = response?.projects ??
+  if (!currentWorkspaceId) {
+    setProjects([]);
+    return;
+  }
+
+  const cacheKey = currentWorkspaceId;
+  const cachedData = projectsCache.get(cacheKey);
+
+  if (cachedData) {
+    setProjects(cachedData);
+
+    getProjectsByWorkspace(currentWorkspaceId)
+      .then(response => {
+        const nextProjects =
+          response?.projects ??
           (Array.isArray(response) ? response : []);
+
+        projectsCache.set(cacheKey, nextProjects);
         setProjects(nextProjects);
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Error fetching projects:", error);
-          setProjects([]);
-        }
-      } finally {
-        requestInFlight = false;
-      }
-    };
+      })
+      .catch(error => {
+        console.error("Error refreshing projects:", error);
+      });
 
-    syncProjects();
-    const handleFocus = () => syncProjects();
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") syncProjects();
-    };
-    window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [currentWorkspaceId, liveTick]);
-  const fetchWorkspaceProjects = async () => {
-    if (!currentWorkspaceId) return;
-    try {
-      const response = await getProjectsByWorkspace(currentWorkspaceId);
+    return;
+  }
 
-      if (response?.projects) {
-        setProjects(response.projects);
-      } else if (Array.isArray(response)) {
-        setProjects(response);
-      } else {
-        setProjects([]);
-      }
-    } catch (error) {
+  getProjectsByWorkspace(currentWorkspaceId)
+    .then(response => {
+      const nextProjects =
+        response?.projects ??
+        (Array.isArray(response) ? response : []);
+
+      projectsCache.set(cacheKey, nextProjects);
+      setProjects(nextProjects);
+    })
+    .catch(error => {
       console.error("Error fetching projects:", error);
       setProjects([]);
-    }
-  };
+    });
+}, [currentWorkspaceId]);
+
+useEffect(() => {
+  if (!liveTick || !currentWorkspaceId) return;
+
+  getProjectsByWorkspace(currentWorkspaceId)
+    .then(response => {
+      const nextProjects =
+        response?.projects ??
+        (Array.isArray(response) ? response : []);
+
+      projectsCache.set(currentWorkspaceId, nextProjects);
+      setProjects(nextProjects);
+    })
+    .catch(error => {
+      console.error("Error refreshing projects:", error);
+    });
+}, [liveTick, currentWorkspaceId]);
+const fetchWorkspaceProjects = async () => {
+  if (!currentWorkspaceId) return;
+
+  try {
+    const response = await getProjectsByWorkspace(currentWorkspaceId);
+
+    const nextProjects =
+      response?.projects ??
+      (Array.isArray(response) ? response : []);
+
+    projectsCache.set(currentWorkspaceId, nextProjects);
+    setProjects(nextProjects);
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    setProjects([]);
+  }
+};
 
   const handleFormSubmit = async data => {
     try {

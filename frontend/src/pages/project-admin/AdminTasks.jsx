@@ -30,7 +30,7 @@ const AdminTasks = () => {
   const [project, setProject] = useState(null);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
   const [viewMode, setViewMode] = useState("grid");
   const [currentPage, setCurrentPage] = useState(1);
   const [showTaskInsights, setShowTaskInsights] = useState(false);

@@ -1,5 +1,5 @@
 import { useLiveTick } from "../../hooks/useLiveRefresh";
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import { getAllWorkspaces } from "../../services/workspaceService";
 import { getDashboardProjects } from "../../services/projectService";
@@ -76,8 +76,11 @@ const AdminReport = () => {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [loading, setLoading] = useState(() => {
+  const cacheKey = workspaceId || "all";
+  return !adminReportCache.has(cacheKey);
+});
+  const hasLoadedOnce = useRef(false);
   const [projectOpen, setProjectOpen] = useState(false);
   const [dateRangeOpen, setDateRangeOpen] = useState(false);
 
@@ -100,7 +103,7 @@ const AdminReport = () => {
       const cacheKey = workspaceId || "all";
       const cachedData = adminReportCache.get(cacheKey);
 
-      if (showLoader && !cachedData && !hasLoadedOnce) {
+      if (showLoader && !cachedData && !hasLoadedOnce.current) {
         setLoading(true);
       }
 
@@ -170,9 +173,9 @@ const AdminReport = () => {
       }
     } finally {
       setLoading(false);
-      setHasLoadedOnce(true);
+      hasLoadedOnce.current = true;
     }
-  }, [workspaceId, hasLoadedOnce]);
+  }, [workspaceId]);
 
   useEffect(() => {
     loadData(true);

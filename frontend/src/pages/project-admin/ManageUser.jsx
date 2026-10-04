@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 const usersCache = new Map();
+const userQuickViewCache = new Map();
 const USERS_PER_PAGE = 8;
 
 const ManageUsers = () => {
@@ -188,29 +189,46 @@ useEffect(() => {
     fetchUsers();
   };
 
-  const handleUserClick = async user => {
-    setSelectedUser(user);
-    setQuickViewData(null);
-    setQuickViewError(null);
-    setQuickViewLoading(true);
-    setShowActivities(false);
+ const handleUserClick = async user => {
+  setSelectedUser(user);
+  setQuickViewError(null);
+  setShowActivities(false);
 
-    try {
-      const token = sessionStorage.getItem("token");
-      const { data } = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/users/${user._id}/quick-view`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setQuickViewData(data);
-    } catch (err) {
-      console.error("Error fetching user quick view:", err);
-      setQuickViewError(
-        err.response?.data?.message || "Failed to load user details."
-      );
-    } finally {
-      setQuickViewLoading(false);
-    }
-  };
+  const cacheKey = String(user._id);
+  const cachedData = userQuickViewCache.get(cacheKey);
+
+  if (cachedData) {
+    setQuickViewData(cachedData);
+    setQuickViewLoading(false);
+    return;
+  }
+
+  setQuickViewData(null);
+  setQuickViewLoading(true);
+
+  try {
+    const token = sessionStorage.getItem("token");
+
+    const { data } = await axios.get(
+      `${process.env.REACT_APP_API_URL}/api/users/${user._id}/quick-view`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    userQuickViewCache.set(cacheKey, data);
+    setQuickViewData(data);
+  } catch (err) {
+    console.error("Error fetching user quick view:", err);
+    setQuickViewError(
+      err.response?.data?.message || "Failed to load user details."
+    );
+  } finally {
+    setQuickViewLoading(false);
+  }
+};
 
   const closeDrawer = () => {
     setSelectedUser(null);

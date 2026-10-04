@@ -20,7 +20,7 @@ const SORTS = {
 };
 
 const workspaceCache = new Map();
-
+const workspaceHealthCache = new Map();
 const HEALTH = {
   risk: ["At Risk", AlertCircle, "bg-red-500/10 text-red-400 border-red-500/20", "bg-red-50 text-red-600 border-red-100"],
   attention: ["Needs Attention", Clock3, "bg-amber-500/10 text-amber-400 border-amber-500/20", "bg-amber-50 text-amber-600 border-amber-100"],
@@ -123,7 +123,7 @@ const ManageWorkspaces = () => {
   const [healthWorkspace, setHealthWorkspace] = useState(null);
   const [healthData, setHealthData] = useState([]);
   const [healthLoading, setHealthLoading] = useState(false);
-
+const healthRequestIdRef = useRef(0);
   const requestIdRef = useRef(0);
   const sortRef = useRef(null);
   const hasLoadedOnceRef = useRef(false);
@@ -293,23 +293,61 @@ useEffect(() => {
     }
   };
 
-  const openHealthScanner = async workspace => {
-    const id = idOf(workspace);
-    if (!id) return;
-    setHealthWorkspace(workspace);
-    setHealthData([]);
-    setHealthLoading(true);
+const openHealthScanner = async workspace => {
+  const id = idOf(workspace);
+  if (!id) return;
+
+  const cacheKey = String(id);
+  const cachedHealth = workspaceHealthCache.get(cacheKey);
+
+  setHealthWorkspace(workspace);
+
+  if (cachedHealth) {
+    setHealthData(cachedHealth);
+    setHealthLoading(false);
 
     try {
       const res = await getWorkspaceMonitorData(id);
-      setHealthData(Array.isArray(res) ? res : res?.monitorData || res?.data || []);
+      const freshData = Array.isArray(res)
+        ? res
+        : res?.monitorData || res?.data || [];
+
+      workspaceHealthCache.set(cacheKey, freshData);
+      setHealthData(freshData);
     } catch (error) {
       console.error("Health scanner error:", error);
+    }
+
+    return;
+  }
+
+  setHealthData([]);
+  setHealthLoading(true);
+
+  const requestId = ++healthRequestIdRef.current;
+
+  try {
+    const res = await getWorkspaceMonitorData(id);
+
+    if (requestId !== healthRequestIdRef.current) return;
+
+    const freshData = Array.isArray(res)
+      ? res
+      : res?.monitorData || res?.data || [];
+
+    workspaceHealthCache.set(cacheKey, freshData);
+    setHealthData(freshData);
+  } catch (error) {
+    if (requestId === healthRequestIdRef.current) {
+      console.error("Health scanner error:", error);
       setHealthData([]);
-    } finally {
+    }
+  } finally {
+    if (requestId === healthRequestIdRef.current) {
       setHealthLoading(false);
     }
-  };
+  }
+};
 
   const healthSummary = useMemo(() => {
     const projects = healthData || [];
@@ -334,6 +372,28 @@ useEffect(() => {
           : "Healthy",
     };
   }, [healthData]);
+
+  useEffect(() => {
+  if (!liveTick || !healthWorkspace) return;
+
+  const id = idOf(healthWorkspace);
+  if (!id) return;
+
+  const cacheKey = String(id);
+
+  getWorkspaceMonitorData(id)
+    .then(res => {
+      const freshData = Array.isArray(res)
+        ? res
+        : res?.monitorData || res?.data || [];
+
+      workspaceHealthCache.set(cacheKey, freshData);
+      setHealthData(freshData);
+    })
+    .catch(error => {
+      console.error("Health scanner live update error:", error);
+    });
+}, [liveTick, healthWorkspace]);
 
   const getProjectHealth = project => {
     const progress = Number(project.progress || 0);
