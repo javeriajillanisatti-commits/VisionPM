@@ -211,70 +211,7 @@ useEffect(() => {
 
   const cardBg = isDarkMode
     ? "bg-[#0B1128] border-[#1E293B]"
-    : "bg-white border-gray-200";
-
-  const skeleton = isDarkMode
-    ? "bg-[#111936]"
-    : "bg-gray-200";
-
-  // Loading state
-  if (loading) {
-    return (
-      <div
-        className={`min-h-screen px-3 sm:px-5 lg:px-10 pt-4 pb-8 ${
-          isDarkMode ? "bg-[#05091D]" : "bg-gray-50"
-        }`}
-      >
-        <div className="space-y-3 mb-6">
-          <div
-            className={`h-8 max-w-md rounded-lg animate-pulse ${skeleton}`}
-          />
-
-          <div
-            className={`h-4 max-w-xl rounded animate-pulse ${skeleton}`}
-          />
-
-          <div className="flex justify-end gap-2.5">
-            <div
-              className={`h-10 w-64 rounded-xl animate-pulse ${skeleton}`}
-            />
-
-            <div className="flex gap-1.5">
-              {[1, 2, 3, 4].map(i => (
-                <div
-                  key={i}
-                  className={`h-10 w-20 rounded-xl animate-pulse ${skeleton}`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {[1, 2].map(i => (
-          <div
-            key={i}
-            className={`h-52 mb-6 rounded-3xl border p-6 animate-pulse ${cardBg}`}
-          >
-            <div
-              className={`h-5 w-40 rounded mb-5 ${skeleton}`}
-            />
-
-            <div
-              className={`h-7 w-72 rounded mb-4 ${skeleton}`}
-            />
-
-            <div
-              className={`h-4 w-full max-w-xl rounded mb-6 ${skeleton}`}
-            />
-
-            <div
-              className={`h-3 rounded-full ${skeleton}`}
-            />
-          </div>
-        ))}
-      </div>
-    );
-  }
+    : "bg-white border-gray-200"
 
   const noFilter = !searchTerm && statusFilter === "All";
 

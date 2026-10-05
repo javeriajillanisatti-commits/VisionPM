@@ -2,29 +2,6 @@ import React, { useState } from "react";
 import { Users, ArrowUpDown, Crown, User as UserIcon } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 
-const SkeletonRow = ({ isDarkMode }) => (
-  <tr>
-    <td colSpan={4} className="py-2">
-      <div
-        className={`flex items-center gap-3 sm:gap-4 px-3 sm:px-5 min-[1000px]:px-8 py-4 sm:py-5 rounded-2xl ${
-          isDarkMode ? "bg-[#111936]" : "bg-gray-50"
-        }`}
-      >
-        <div
-          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full animate-pulse shrink-0 ${
-            isDarkMode ? "bg-[#1E293B]" : "bg-gray-200"
-          }`}
-        />
-        <div
-          className={`h-3.5 w-20 sm:w-24 rounded animate-pulse ${
-            isDarkMode ? "bg-[#1E293B]" : "bg-gray-200"
-          }`}
-        />
-      </div>
-    </td>
-  </tr>
-);
-
 const avatarStyles = [
   ["bg-indigo-100 text-indigo-600", "bg-indigo-500/15 text-indigo-400", "ring-indigo-200"],
   ["bg-purple-100 text-purple-600", "bg-purple-500/15 text-purple-400", "ring-purple-200"],
@@ -161,11 +138,7 @@ const UserTable = ({
           </thead>
 
           <tbody>
-            {isLoading ? (
-              Array.from({ length: 5 }, (_, i) => (
-                <SkeletonRow key={i} isDarkMode={isDarkMode} />
-              ))
-            ) : hasError ? (
+           {hasError ? (
               <tr>
                 <td
                   colSpan={4}

@@ -439,22 +439,7 @@ useEffect(() => {
       </div>
 
       <div className="flex-1 min-w-0 w-full">
-        {loading ? (
-          <div
-            className={`grid grid-cols-1 ${
-              viewMode === "grid"
-                ? "min-[600px]:grid-cols-2 xl:grid-cols-3"
-                : ""
-            } gap-4 min-[430px]:gap-5 sm:gap-6 pb-6`}
-          >
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <div
-                key={i}
-                className={`h-48 rounded-2xl border animate-pulse ${panel}`}
-              />
-            ))}
-          </div>
-        ) : sortedTasks.length ? (
+       {sortedTasks.length ? (
           <>
             <div
               className={

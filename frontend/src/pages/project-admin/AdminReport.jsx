@@ -470,32 +470,6 @@ useEffect(() => {
     doc.save(`VisionPM-${safeName}-Report.pdf`);
   };
 
-  if (loading) {
-    const skeleton = isDarkMode ? "bg-[#111A36]" : "bg-gray-200";
-    const card = isDarkMode ? "bg-[#0B1128] border-[#1E293B]" : "bg-white border-gray-100";
-
-    return (
-      <div className={`min-h-screen w-full px-3 sm:px-6 lg:px-10 pt-4 pb-6 ${isDarkMode ? "bg-[#05091D]" : "bg-gray-50"}`}>
-        <div className="animate-pulse space-y-4">
-          <div className="flex flex-col min-[500px]:flex-row justify-between gap-3">
-            <div className="space-y-2">
-              <div className={`h-8 w-32 rounded-lg ${skeleton}`} />
-              <div className={`h-4 w-72 rounded-md ${skeleton}`} />
-            </div>
-            <div className={`h-10 w-36 rounded-xl ${skeleton}`} />
-          </div>
-          <div className={`h-16 rounded-2xl border ${card}`} />
-          <div className={`h-24 rounded-2xl border ${card}`} />
-          <div className={`h-[300px] rounded-[2rem] border ${card}`} />
-          <div className="grid grid-cols-1 min-[600px]:grid-cols-2 min-[900px]:grid-cols-4 gap-3">
-            {[1, 2, 3, 4].map(i => <div key={i} className={`h-24 rounded-2xl border ${card}`} />)}
-          </div>
-          <div className={`h-[380px] rounded-[2rem] border ${card}`} />
-        </div>
-      </div>
-    );
-  }
-
   const inputClass = `border rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold outline-none ${
     isDarkMode
       ? "bg-[#11182B] border-[#263149] text-gray-200 focus:border-blue-500"

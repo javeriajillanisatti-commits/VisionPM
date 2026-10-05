@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/sidebar/Sidebar";
 import Topbar from "../components/topbar/Topbar";
+import PageSkeleton from "../components/common/PageSkeleton";
 
 const MainLayout = ({ userRole }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -31,7 +32,9 @@ const MainLayout = ({ userRole }) => {
         {/* Main content */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-4">
-            <Outlet />
+            <Suspense fallback={<PageSkeleton />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
 

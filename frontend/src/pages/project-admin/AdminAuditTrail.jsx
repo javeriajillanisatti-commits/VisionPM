@@ -238,16 +238,6 @@ const fetchAuditLogs = useCallback(async () => {
   const actionOptions = [["All", "All Actions"], ["Created", "Created"], ["Updated", "Updated"], ["Deleted", "Deleted"]];
   const moduleOptions = [["All", "All Modules"], ["Project", "Project"], ["Task", "Task"], ["Authentication", "Authentication"]];
 
-  const SkeletonRow = () => (
-    <tr className={`border-b ${isDarkMode ? "border-[#1E293B]" : "border-gray-100"}`}>
-      {[1, 2, 3, 4, 5].map(item => (
-        <td key={item} className="px-4 py-3">
-          <div className={`h-4 rounded-md animate-pulse ${item === 4 ? "w-40" : "w-24"} ${isDarkMode ? "bg-[#1E293B]" : "bg-gray-200"}`} />
-        </td>
-      ))}
-    </tr>
-  );
-
   return (
     <div className={`w-full min-h-screen overflow-x-hidden p-3 sm:p-5 lg:p-6 ${isDarkMode ? "bg-[#05091D]" : "bg-gray-50"}`}>
       <div className="mb-6">
@@ -440,9 +430,8 @@ const fetchAuditLogs = useCallback(async () => {
             </thead>
 
             <tbody>
-              {loading ? (
-                Array.from({ length: 6 }, (_, i) => <SkeletonRow key={i} />)
-              ) : paginatedLogs.length ? (
+            
+              {paginatedLogs.length ? (
                 paginatedLogs.map(log => {
                   const date = formatDate(log.createdAt);
                   return (

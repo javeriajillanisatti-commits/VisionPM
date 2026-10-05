@@ -77,54 +77,6 @@ const StatusDropdown = ({ currentStatus, onRequestChange, isDarkMode }) => {
   );
 };
 
-const Skeleton = ({ dark, className }) => (
-  <div className={`${className} rounded-md ${dark ? "bg-slate-800" : "bg-gray-200"}`} />
-);
-
-const FullPageSkeleton = ({ isDarkMode }) => (
-  <div className="w-full space-y-6 animate-pulse">
-    <div className="space-y-2 mb-2 -mt-3">
-      <Skeleton dark={isDarkMode} className="h-9 w-64 rounded-lg" />
-      <Skeleton dark={isDarkMode} className="h-4 w-80" />
-    </div>
-
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className={`rounded-2xl border p-5 flex items-center justify-between ${isDarkMode ? "bg-[#11182B] border-[#263149]" : "bg-white border-gray-200"}`}>
-          <div className="space-y-2">
-            <Skeleton dark={isDarkMode} className="h-4 w-24" />
-            <Skeleton dark={isDarkMode} className="h-8 w-12 rounded-lg" />
-          </div>
-          <Skeleton dark={isDarkMode} className="w-11 h-11 rounded-xl" />
-        </div>
-      ))}
-    </div>
-
-    <div className={`rounded-2xl border shadow-sm p-6 space-y-5 ${isDarkMode ? "bg-[#11182B]/90 border-[#263149]" : "bg-white border-gray-200"}`}>
-      <div className="space-y-4">
-        <Skeleton dark={isDarkMode} className="h-7 w-32 rounded-lg" />
-        <div className="flex gap-2">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} dark={isDarkMode} className="h-8 w-24 rounded-lg" />)}
-        </div>
-      </div>
-
-      <div className="space-y-3 pt-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className={`grid grid-cols-1 md:grid-cols-[2.5fr_1.3fr_1.2fr_1fr] gap-4 items-center px-5 py-3.5 rounded-xl border ${isDarkMode ? "bg-white/[0.02] border-[#263149]" : "bg-[#FDFDFD] border-gray-100"}`}>
-            <div className="flex items-center gap-3">
-              <Skeleton dark={isDarkMode} className="w-9 h-9 rounded-full" />
-              <Skeleton dark={isDarkMode} className="h-4 w-32" />
-            </div>
-            <Skeleton dark={isDarkMode} className="h-6 w-20" />
-            <Skeleton dark={isDarkMode} className="h-7 w-24 rounded-full" />
-            <Skeleton dark={isDarkMode} className="h-8 w-24 rounded-lg" />
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
-
 const CVModalSkeleton = ({ isDarkMode }) => (
   <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 px-4">
     <div className={`rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 animate-pulse ${isDarkMode ? "bg-[#11182B] border border-[#263149]" : "bg-white"}`}>

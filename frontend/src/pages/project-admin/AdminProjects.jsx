@@ -452,17 +452,7 @@ useEffect(() => {
             </div>
           </div>
         </div>
-
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <div
-                key={i}
-                className={`h-48 rounded-2xl border animate-pulse ${panel}`}
-              />
-            ))}
-          </div>
-        ) : sorted.length ? (
+        {sorted.length ? (
           <div
             className={
               viewMode === "grid"
