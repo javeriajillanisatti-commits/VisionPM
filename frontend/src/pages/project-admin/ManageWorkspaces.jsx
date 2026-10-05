@@ -131,7 +131,7 @@ const healthRequestIdRef = useRef(0);
   const fetchWorkspaces = useCallback(async (showLoader = true) => {
   if (!allWorkspacesSelected && !activeWorkspaceId) {
     setWorkspaces([]);
-    setLoading(false);
+    
     return;
   }
 
@@ -142,7 +142,7 @@ const healthRequestIdRef = useRef(0);
   const cachedWorkspaces = workspaceCache.get(cacheKey);
 
   if (showLoader && !cachedWorkspaces && !hasLoadedOnceRef.current) {
-    setLoading(true);
+
   }
 
   const requestId = ++requestIdRef.current;
@@ -180,7 +180,7 @@ const healthRequestIdRef = useRef(0);
     }
   } finally {
     if (requestId === requestIdRef.current) {
-      setLoading(false);
+      
     }
   }
 }, [activeWorkspaceId, allWorkspacesSelected]);
@@ -194,7 +194,7 @@ useEffect(() => {
 
   if (cachedWorkspaces) {
     setWorkspaces(cachedWorkspaces);
-    setLoading(false);
+    
     hasLoadedOnceRef.current = true;
 
     fetchWorkspaces(false);

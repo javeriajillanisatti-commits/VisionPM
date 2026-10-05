@@ -100,7 +100,7 @@ const hasLoadedOnce = useRef(false);
       const cachedData = adminReportCache.get(cacheKey);
 
       if (showLoader && !cachedData && !hasLoadedOnce.current) {
-        setLoading(true);
+
       }
 
       const token = sessionStorage.getItem("token");
@@ -168,7 +168,6 @@ const hasLoadedOnce = useRef(false);
         setUsers(cachedData.users);
       }
     } finally {
-      setLoading(false);
       hasLoadedOnce.current = true;
     }
   }, [workspaceId]);
@@ -180,7 +179,7 @@ useEffect(() => {
     setProjects(cachedData.projects);
     setTasks(cachedData.tasks);
     setUsers(cachedData.users);
-    setLoading(false);
+   
     hasLoadedOnce.current = true;
 
     loadData(false);

@@ -36,7 +36,7 @@ useEffect(() => {
   const load = async () => {
     if (!workspaceId) {
       setError("Workspace ID is missing.");
-      setLoading(false);
+      
       return;
     }
 
@@ -45,9 +45,9 @@ useEffect(() => {
 
     if (cachedData) {
       setProjects(cachedData);
-      setLoading(false);
+    
     } else {
-      setLoading(true);
+  
     }
 
     try {
@@ -76,7 +76,7 @@ useEffect(() => {
         setProjects([]);
       }
     } finally {
-      setLoading(false);
+      
     }
   };
 

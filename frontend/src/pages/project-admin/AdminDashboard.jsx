@@ -54,6 +54,7 @@ const AdminDashboard = () => {
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
   const [dashboard, setDashboard] = useState(initialDashboard);
+  
   const hasLoadedOnce = useRef(false);
   const workspaceId = activeWorkspace?._id || null;
 
@@ -74,14 +75,12 @@ useEffect(() => {
 
   if (cachedDashboard) {
     setDashboard(cachedDashboard);
-    setLoading(false);
     hasLoadedOnce.current = true;
   }
 
   const load = async () => {
     try {
       if (!hasLoadedOnce.current) {
-        setLoading(true);
       }
 
       const data = await getDashboardData(workspaceId);
@@ -99,7 +98,6 @@ useEffect(() => {
       }
     } finally {
       if (mounted) {
-        setLoading(false);
         hasLoadedOnce.current = true;
       }
     }

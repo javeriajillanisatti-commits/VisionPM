@@ -45,7 +45,7 @@ const [tasks, setTasks] = useState(cachedMonitorData?.tasks || []);
     const cachedData = monitorProjectsCache.get(cacheKey);
 
     if (!silent && !cachedData) {
-      setLoading(true);
+      
     }
 
     const [pRes, tRes] = await Promise.all([
@@ -97,7 +97,7 @@ const [tasks, setTasks] = useState(cachedMonitorData?.tasks || []);
     }
   } finally {
     if (id === requestId.current) {
-      setLoading(false);
+    
     }
   }
 }, [workspaceId]); 

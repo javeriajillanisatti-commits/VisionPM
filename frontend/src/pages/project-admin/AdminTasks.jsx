@@ -66,7 +66,7 @@ const AdminTasks = () => {
   if (!token) {
     console.error("No authentication token found.");
     setTasks([]);
-    setLoading(false);
+
     return;
   }
 
@@ -75,7 +75,7 @@ const AdminTasks = () => {
     const cachedData = adminTasksCache.get(cacheKey);
 
     if (!hasLoadedOnceRef.current && !cachedData) {
-      setLoading(true);
+
     }
 
     const { data } = await axios.get(
@@ -114,7 +114,7 @@ const AdminTasks = () => {
       setTasks([]);
     }
   } finally {
-    setLoading(false);
+   
     hasLoadedOnceRef.current = true;
   }
 }, [token, projectId, apiConfig]);
@@ -123,7 +123,7 @@ const AdminTasks = () => {
   if (!projectId) {
     setTasks([]);
     setProject(null);
-    setLoading(false);
+    
     return;
   }
 
@@ -136,7 +136,7 @@ const AdminTasks = () => {
       setProject(cachedData.project);
     }
 
-    setLoading(false);
+   
     hasLoadedOnceRef.current = true;
   }
 
