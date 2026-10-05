@@ -1,15 +1,10 @@
 import { useLiveTick } from "../../hooks/useLiveRefresh";
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import {
-  MailOpen,
-} from "lucide-react";
 
 import MessageDropdown from "../../components/messagedetail/MessageDropdown";
 import MessageDetail from "../../components/messagedetail/MessageDetail";
 const messagesCache = new Map();
-
-const PAGE_SIZE = 5;
 
 
 // Avatar colors
@@ -21,21 +16,6 @@ const AVATAR_COLORS = [
   { bg: "bg-emerald-100 dark:bg-emerald-950/40", text: "text-emerald-700 dark:text-emerald-400" },
   { bg: "bg-indigo-100 dark:bg-indigo-950/40", text: "text-indigo-700 dark:text-indigo-400" },
 ];
-
-const getAvatarColor = (name) => {
-  if (!name) return AVATAR_COLORS[0];
-  return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
-};
-
-const getInitials = (name) => {
-  if (!name) return "?";
-
-  const parts = name.trim().split(" ").filter(Boolean);
-
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-};
 
 const FilterButton = ({ label, active, count, onClick }) => (
   <button
@@ -73,7 +53,6 @@ const cachedMessages = messagesCache.get(cacheKey);
 
 const [messages, setMessages] = useState(cachedMessages || []);
   const [filter, setFilter] = useState("All");
-  const [currentPage, setCurrentPage] = useState(1);
 const fetchMessages = useCallback(async () => {
   const cachedData = messagesCache.get(cacheKey);
 
@@ -105,10 +84,6 @@ const fetchMessages = useCallback(async () => {
     fetchMessages();
   }
 }, [fetchMessages, liveTick]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filter]);
 
   const handleClose = () => {
     setSelectedMessage(null);
@@ -149,9 +124,6 @@ const markAsRead = async (id) => {
   }
 };
 
-  const filteredMessages = messages.filter(
-    (msg) => filter === "All" || (filter === "Unread" && !msg.isRead) || (filter === "Read" && msg.isRead)
-  );
   const unreadCount = messages.filter((msg) => !msg.isRead).length;
 
   return (
@@ -191,7 +163,7 @@ const markAsRead = async (id) => {
           </div>
 
           <div className="p-4 sm:p-6">
-        
+
           </div>
         </div>
       </div>
