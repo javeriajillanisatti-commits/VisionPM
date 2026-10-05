@@ -25,6 +25,5 @@ const workspaceSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-workspaceSchema.index({ projectAdmin: 1 });
 
 module.exports = mongoose.model("Workspace", workspaceSchema);

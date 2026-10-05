@@ -143,10 +143,19 @@ const getDashboardData = async (projectAdminId, workspaceId) => {
       (task) => task.status === "Todo" || task.status === "To Do"
     ).length;
 
-    // Progress is driven by real task data: completed = 100%, in progress = 50%.
-    const progress = tasksCount
-      ? Math.round((inProgress * 50 + completed * 100) / tasksCount)
-      : 0;
+    const projectStatus = project.status?.toString().trim().toLowerCase();
+
+    const progress =
+      projectStatus === "planning"
+        ? 0
+        : projectStatus === "in progress" ||
+          projectStatus === "in-progress"
+        ? 50
+        : projectStatus === "completed"
+        ? 100
+        : tasksCount
+        ? Math.round((completed / tasksCount) * 100)
+        : 0;
 
     return {
       ...project,

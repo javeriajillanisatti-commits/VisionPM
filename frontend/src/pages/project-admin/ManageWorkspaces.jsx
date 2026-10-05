@@ -115,6 +115,7 @@ const ManageWorkspaces = () => {
   const [editingWorkspace, setEditingWorkspace] = useState(null);
   const [workspaceToDelete, setWorkspaceToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("");
   const [sortOpen, setSortOpen] = useState(false);
@@ -131,7 +132,7 @@ const healthRequestIdRef = useRef(0);
   const fetchWorkspaces = useCallback(async (showLoader = true) => {
   if (!allWorkspacesSelected && !activeWorkspaceId) {
     setWorkspaces([]);
-    
+    setLoading(false);
     return;
   }
 
@@ -142,7 +143,7 @@ const healthRequestIdRef = useRef(0);
   const cachedWorkspaces = workspaceCache.get(cacheKey);
 
   if (showLoader && !cachedWorkspaces && !hasLoadedOnceRef.current) {
-
+    setLoading(true);
   }
 
   const requestId = ++requestIdRef.current;
@@ -180,7 +181,7 @@ const healthRequestIdRef = useRef(0);
     }
   } finally {
     if (requestId === requestIdRef.current) {
-      
+      setLoading(false);
     }
   }
 }, [activeWorkspaceId, allWorkspacesSelected]);
@@ -194,7 +195,7 @@ useEffect(() => {
 
   if (cachedWorkspaces) {
     setWorkspaces(cachedWorkspaces);
-    
+    setLoading(false);
     hasLoadedOnceRef.current = true;
 
     fetchWorkspaces(false);
@@ -352,7 +353,6 @@ const openHealthScanner = async workspace => {
     const projects = healthData || [];
     const tasks = projects.flatMap(p => p.tasks || []);
     const completedTasks = tasks.filter(task => norm(task.status) === "completed").length;
-    const inProgressTasks = tasks.filter(task => ["in progress", "inprogress", "in-progress"].includes(norm(task.status))).length;
     const overdueTasks = tasks.filter(isOverdue).length;
     const riskyProjects = projects.filter(isRisky).length;
 
@@ -362,8 +362,7 @@ const openHealthScanner = async workspace => {
       completedTasks,
       overdueTasks,
       highPriorityTasks: tasks.filter(task => norm(task.priority) === "high").length,
-      // completed = 100%, in progress = 50%
-      progress: tasks.length ? Math.round((inProgressTasks * 50 + completedTasks * 100) / tasks.length) : 0,
+      progress: tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0,
       riskyProjects,
       status:
         riskyProjects >= Math.max(2, Math.ceil(projects.length / 2))
@@ -411,6 +410,49 @@ const openHealthScanner = async workspace => {
   }, [workspaces, query, sortBy]);
 
   const selectedSort = SORT_OPTIONS.find(([value]) => value === sortBy)?.[1] || "Sort By";
+  const bone = size => `animate-pulse ${t.skel} ${size}`;
+
+  
+  if (loading) {
+    return (
+      <div className={`${PAGE} ${t.page}`}>
+        <div className="w-full max-w-7xl mx-auto min-w-0">
+          <div className="mb-5 min-[600px]:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="space-y-3 min-w-0">
+              <div className={bone("h-8 sm:h-9 w-48 sm:w-56 rounded-lg")} />
+              <div className={bone("h-4 w-72 max-w-full rounded")} />
+            </div>
+            <div className={bone("h-11 w-full sm:w-[200px] rounded-lg")} />
+          </div>
+
+          <div className="mb-5 min-[600px]:mb-6 flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <div className={bone("h-10 sm:h-11 w-full sm:w-80 rounded-xl")} />
+            <div className="grid grid-cols-2 gap-2 sm:contents">
+              <div className={bone("h-10 sm:h-11 sm:w-48 rounded-xl")} />
+              <div className={bone("h-10 sm:h-11 sm:w-56 sm:ml-auto rounded-xl")} />
+            </div>
+          </div>
+
+          <div className={GRID}>
+            {[1, 2, 3].map(i => (
+              <div key={i} className={`rounded-2xl border p-4 sm:p-5 min-[600px]:p-6 space-y-5 ${t.panel}`}>
+                <div className="flex justify-between gap-3">
+                  <div className={bone("h-10 w-10 rounded-xl")} />
+                  <div className={bone("h-8 w-20 rounded-lg")} />
+                </div>
+                <div className={bone("h-6 w-40 rounded-lg")} />
+                <div className={bone("h-4 w-full rounded")} />
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className={bone("h-14 sm:h-16 rounded-xl")} />
+                  <div className={bone("h-14 sm:h-16 rounded-xl")} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const noSelection = !activeWorkspace && !allWorkspacesSelected;
   const emptyTitle = noSelection ? "No workspace selected" : query ? "No matching workspaces" : "No workspaces found";

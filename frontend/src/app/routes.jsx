@@ -1,106 +1,47 @@
-import { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import PublicLayout from "../layouts/PublicLayout";
 import MainLayout from "../layouts/MainLayout";
 import ProtectedRoute from "./ProtectedRoute";
-import PageSkeleton from "../components/common/PageSkeleton";
 
 import LandingPage from "../pages/public/LandingPage";
 import LoginPage from "../pages/public/LoginPage";
-const SignupPage = lazy(() => import("../pages/public/SignupPage"));
-const ForgotPassword = lazy(() => import("../pages/public/ForgotPassword"));
-const ResetPasswordPage = lazy(() => import("../pages/public/Reset"));
-const VerifyEmail = lazy(() => import("../pages/VerifyEmail"));
+import SignupPage from "../pages/public/SignupPage";
+import ForgotPassword from "../pages/public/ForgotPassword";
+import ResetPasswordPage from "../pages/public/Reset";
+import VerifyEmail from "../pages/VerifyEmail";
 
-const Approvals = lazy(() => import("../pages/super-admin/Approvals"));
-const MessagePage = lazy(() => import("../pages/super-admin/MessagePage"));
+import Approvals from "../pages/super-admin/Approvals";
+import MessagePage from "../pages/super-admin/MessagePage";
 
-const AdminDashboard = lazy(() => import("../pages/project-admin/AdminDashboard"));
-const ManageUsers = lazy(() => import("../pages/project-admin/ManageUser"));
-const ManageWorkspaces = lazy(() => import("../pages/project-admin/ManageWorkspaces"));
-const AdminProjects = lazy(() => import("../pages/project-admin/AdminProjects"));
-const AdminTasks = lazy(() => import("../pages/project-admin/AdminTasks"));
-const MonitorProjectsandTasks = lazy(() => import("../pages/project-admin/MonitorProjectsandTasks"));
-const AdminReport = lazy(() => import("../pages/project-admin/AdminReport"));
-const AdminAuditTrail = lazy(() => import("../pages/project-admin/AdminAuditTrail"));
-const Announcements = lazy(() => import("../pages/project-admin/Announcements"));
-const WorkspaceProjectMap = lazy(() => import("../pages/project-admin/WorkspaceProjectMap"));
+import AdminDashboard from "../pages/project-admin/AdminDashboard";
+import ManageUsers from "../pages/project-admin/ManageUser";
+import ManageWorkspaces from "../pages/project-admin/ManageWorkspaces";
+import AdminProjects from "../pages/project-admin/AdminProjects";
+import AdminTasks from "../pages/project-admin/AdminTasks";
+import MonitorProjectsandTasks from "../pages/project-admin/MonitorProjectsandTasks";
+import AdminReport from "../pages/project-admin/AdminReport";
+import AdminAuditTrail from "../pages/project-admin/AdminAuditTrail";
+import Announcements from "../pages/project-admin/Announcements";
+import WorkspaceProjectMap from "../pages/project-admin/WorkspaceProjectMap";
 
-const Dashboard = lazy(() => import("../pages/project-manager/Dashboard"));
-const Workspaces = lazy(() => import("../pages/project-manager/Workspaces"));
-const Projects = lazy(() => import("../pages/project-manager/Projects"));
-const Tasks = lazy(() => import("../pages/project-manager/Tasks"));
-const TaskDetails = lazy(() => import("../pages/project-manager/TaskDetails"));
-const Members = lazy(() => import("../pages/project-manager/Members"));
-const MonitorTaskProgress = lazy(() => import("../pages/project-manager/MonitorTaskProgress"));
-const Report = lazy(() => import("../pages/project-manager/Report"));
+import Dashboard from "../pages/project-manager/Dashboard";
+import Workspaces from "../pages/project-manager/Workspaces";
+import Projects from "../pages/project-manager/Projects";
+import Tasks from "../pages/project-manager/Tasks";
+import TaskDetails from "../pages/project-manager/TaskDetails";
+import Members from "../pages/project-manager/Members";
+import MonitorTaskProgress from "../pages/project-manager/MonitorTaskProgress";
+import Report from "../pages/project-manager/Report";
 
-const MemberWorkspace = lazy(() => import("../pages/team-member/TM-Workspace"));
-const TMProjects = lazy(() => import("../pages/team-member/TMProjects"));
-const TMTasks = lazy(() => import("../pages/team-member/TM-Tasks"));
-const TMTaskDetail = lazy(() => import("../pages/team-member/TM-TaskDetail"));
-const MemberReport = lazy(() => import("../pages/team-member/TM-Report"));
-const TMWorkPlanner = lazy(() => import("../pages/team-member/TM-WorkPlanner"));
-const TMContribution = lazy(() => import("../pages/team-member/TM-Contribution"));
-
-// Download the other pages of the user's role quietly in the background,
-// so moving between pages is instant (no wait for page code).
-const prefetchLoaders = {
-  superadmin: [
-    () => import("../pages/super-admin/Approvals"),
-    () => import("../pages/super-admin/MessagePage"),
-  ],
-  projectadmin: [
-    () => import("../pages/project-admin/AdminDashboard"),
-    () => import("../pages/project-admin/ManageUser"),
-    () => import("../pages/project-admin/ManageWorkspaces"),
-    () => import("../pages/project-admin/AdminProjects"),
-    () => import("../pages/project-admin/AdminTasks"),
-    () => import("../pages/project-admin/MonitorProjectsandTasks"),
-    () => import("../pages/project-admin/AdminReport"),
-    () => import("../pages/project-admin/AdminAuditTrail"),
-    () => import("../pages/project-admin/Announcements"),
-    () => import("../pages/project-admin/WorkspaceProjectMap"),
-  ],
-  projectmanager: [
-    () => import("../pages/project-manager/Dashboard"),
-    () => import("../pages/project-manager/Workspaces"),
-    () => import("../pages/project-manager/Projects"),
-    () => import("../pages/project-manager/Tasks"),
-    () => import("../pages/project-manager/TaskDetails"),
-    () => import("../pages/project-manager/Members"),
-    () => import("../pages/project-manager/MonitorTaskProgress"),
-    () => import("../pages/project-manager/Report"),
-  ],
-  teammember: [
-    () => import("../pages/team-member/TM-Workspace"),
-    () => import("../pages/team-member/TMProjects"),
-    () => import("../pages/team-member/TM-Tasks"),
-    () => import("../pages/team-member/TM-TaskDetail"),
-    () => import("../pages/team-member/TM-Report"),
-    () => import("../pages/team-member/TM-WorkPlanner"),
-    () => import("../pages/team-member/TM-Contribution"),
-  ],
-};
-
-const prefetchPages = () => {
-  const token = sessionStorage.getItem("token");
-  if (!token) return;
-  const role = (sessionStorage.getItem("role") || "").toLowerCase().replace(/[\s_-]+/g, "");
-  const loaders = prefetchLoaders[role] || [];
-  const run = () => loaders.forEach((load, i) => setTimeout(() => load().catch(() => {}), i * 150));
-  if ("requestIdleCallback" in window) window.requestIdleCallback(run, { timeout: 3000 });
-  else setTimeout(run, 1500);
-};
-
-if (typeof window !== "undefined") {
-  window.addEventListener("userAuthenticated", prefetchPages);
-  if (document.readyState === "complete") prefetchPages();
-  else window.addEventListener("load", prefetchPages);
-}
+import MemberWorkspace from "../pages/team-member/TM-Workspace";
+import TMProjects from "../pages/team-member/TMProjects";
+import TMTasks from "../pages/team-member/TM-Tasks";
+import TMTaskDetail from "../pages/team-member/TM-TaskDetail";
+import MemberReport from "../pages/team-member/TM-Report";
+import TMWorkPlanner from "../pages/team-member/TM-WorkPlanner";
+import TMContribution from "../pages/team-member/TM-Contribution";
 
 const AppRoutes = () => (
-  <Suspense fallback={<PageSkeleton fullScreen />}>
   <Routes>
     {/* Public pages */}
     <Route element={<PublicLayout />}>
@@ -169,7 +110,6 @@ const AppRoutes = () => (
 
     <Route path="*" element={<Navigate to="/login" replace />} />
   </Routes>
-  </Suspense>
 );
 
 export default AppRoutes;

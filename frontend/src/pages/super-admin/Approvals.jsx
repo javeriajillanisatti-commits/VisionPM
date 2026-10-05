@@ -77,6 +77,73 @@ const StatusDropdown = ({ currentStatus, onRequestChange, isDarkMode }) => {
   );
 };
 
+const Skeleton = ({ dark, className }) => (
+  <div className={`${className} rounded-md ${dark ? "bg-slate-800" : "bg-gray-200"}`} />
+);
+
+const FullPageSkeleton = ({ isDarkMode }) => (
+  <div className="w-full space-y-6 animate-pulse">
+    <div className="space-y-2 mb-2 -mt-3">
+      <Skeleton dark={isDarkMode} className="h-9 w-64 rounded-lg" />
+      <Skeleton dark={isDarkMode} className="h-4 w-80" />
+    </div>
+
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className={`rounded-2xl border p-5 flex items-center justify-between ${isDarkMode ? "bg-[#11182B] border-[#263149]" : "bg-white border-gray-200"}`}>
+          <div className="space-y-2">
+            <Skeleton dark={isDarkMode} className="h-4 w-24" />
+            <Skeleton dark={isDarkMode} className="h-8 w-12 rounded-lg" />
+          </div>
+          <Skeleton dark={isDarkMode} className="w-11 h-11 rounded-xl" />
+        </div>
+      ))}
+    </div>
+
+    <div className={`rounded-2xl border shadow-sm p-6 space-y-5 ${isDarkMode ? "bg-[#11182B]/90 border-[#263149]" : "bg-white border-gray-200"}`}>
+      <div className="space-y-4">
+        <Skeleton dark={isDarkMode} className="h-7 w-32 rounded-lg" />
+        <div className="flex gap-2">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} dark={isDarkMode} className="h-8 w-24 rounded-lg" />)}
+        </div>
+      </div>
+
+      <div className="space-y-3 pt-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className={`grid grid-cols-1 md:grid-cols-[2.5fr_1.3fr_1.2fr_1fr] gap-4 items-center px-5 py-3.5 rounded-xl border ${isDarkMode ? "bg-white/[0.02] border-[#263149]" : "bg-[#FDFDFD] border-gray-100"}`}>
+            <div className="flex items-center gap-3">
+              <Skeleton dark={isDarkMode} className="w-9 h-9 rounded-full" />
+              <Skeleton dark={isDarkMode} className="h-4 w-32" />
+            </div>
+            <Skeleton dark={isDarkMode} className="h-6 w-20" />
+            <Skeleton dark={isDarkMode} className="h-7 w-24 rounded-full" />
+            <Skeleton dark={isDarkMode} className="h-8 w-24 rounded-lg" />
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+const CVModalSkeleton = ({ isDarkMode }) => (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 px-4">
+    <div className={`rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 animate-pulse ${isDarkMode ? "bg-[#11182B] border border-[#263149]" : "bg-white"}`}>
+      <div className="flex items-center gap-4">
+        <Skeleton dark={isDarkMode} className="w-14 h-14 rounded-full" />
+        <div className="space-y-2 flex-1">
+          <Skeleton dark={isDarkMode} className="h-5 w-40" />
+          <Skeleton dark={isDarkMode} className="h-4 w-24" />
+        </div>
+      </div>
+      <div className="space-y-2 pt-4">
+        <Skeleton dark={isDarkMode} className="h-4 w-full" />
+        <Skeleton dark={isDarkMode} className="h-4 w-5/6" />
+        <Skeleton dark={isDarkMode} className="h-4 w-4/6" />
+      </div>
+    </div>
+  </div>
+);
+
 const FilterButton = ({ item, active, count, isDarkMode, onClick }) => (
   <button
     key={item}
@@ -118,7 +185,8 @@ const RequestRow = ({ request, isDarkMode, onStatusChange, onViewCV }) => {
           {name}
         </span>
       </div>
-      <div><span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide ${isDarkMode ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-blue-50 text-blue-700 border border-blue-100"}`}>
+      <div>
+        <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide ${isDarkMode ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-blue-50 text-blue-700 border border-blue-100"}`}>
           {request.role || "N/A"}
         </span>
       </div>
@@ -161,7 +229,6 @@ const PaginationBar = ({ currentPage, totalPages, setCurrentPage, isDarkMode }) 
     </div>
   </div>
 );
-
 const ConfirmationModal = ({ isDarkMode, pendingChange, onCancel, onConfirm, isSubmitting }) => (
   <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 px-4">
 <div className={`rounded-2xl shadow-2xl max-w-sm w-full p-6 transition-colors duration-300 ${isDarkMode ? "bg-[#11182B] border border-[#263149]" : "bg-white"}`}>      <h3 className={`text-base font-bold ${isDarkMode ? "text-white" : "text-[#0D1B2A]"}`}> Confirm status change </h3>
@@ -208,6 +275,7 @@ const Approvals = () => {
 const cachedRequests = approvalsCache.get(cacheKey);
 
 const [requests, setRequests] = useState(cachedRequests || []);
+const [initialLoading, setInitialLoading] = useState(!cachedRequests);
   const [cvLoading, setCvLoading] = useState(false);
   const [showCVModal, setShowCVModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -223,8 +291,12 @@ const [requests, setRequests] = useState(cachedRequests || []);
   }, []);
 
 const fetchRequests = useCallback(
-  async () => {
+  async (showLoader = false) => {
     const cachedData = approvalsCache.get(cacheKey);
+
+    if (showLoader && !cachedData) {
+      setInitialLoading(true);
+    }
 
     try {
       const response = await approvalService.getPendingRequests();
@@ -246,6 +318,8 @@ const fetchRequests = useCallback(
           "error"
         );
       }
+    } finally {
+      setInitialLoading(false);
     }
   },
   [showToast]
@@ -256,15 +330,17 @@ useEffect(() => {
 
   if (cachedData) {
     setRequests(cachedData);
+    setInitialLoading(false);
+    fetchRequests(false);
+  } else {
+    fetchRequests(true);
   }
-
-  fetchRequests();
 }, [fetchRequests]);
 
 useEffect(() => {
   if (!liveTick) return;
 
-  fetchRequests();
+  fetchRequests(false);
 }, [liveTick, fetchRequests]);
 
   useEffect(() => setCurrentPage(1), [statusFilter]);
@@ -307,7 +383,7 @@ useEffect(() => {
         await approvalService.rejectRequest(userId);
         showToast(`${userName} rejected successfully`, "error");
       }
-      await fetchRequests();
+      await fetchRequests(false);
       setPendingChange(null);
     } catch (error) {
       showToast(error.response?.data?.message || error.message || "Something went wrong", "error");
@@ -376,7 +452,8 @@ const handleViewCV = async (request) => {
 
   return (
     <div className={`w-full p-3 sm:p-5 lg:p-6 space-y-6 transition-colors duration-300 ${isDarkMode ? "bg-[#05091D] text-white" : "bg-gray-50 text-gray-900"}`}>
-      <>
+      {initialLoading ? <FullPageSkeleton isDarkMode={isDarkMode} /> : (
+        <>
           <div className="space-y-1">
             <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}> Approval Requests </h1>
             <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}> Manage and review account approval requests</p>
@@ -403,7 +480,7 @@ const handleViewCV = async (request) => {
 </div>
             </div>
 
-            <div className={`hidden md:grid grid-cols-[2.5fr_1.3fr_1.2fr_1fr] gap-4 px-6 py-3.5 text-[10px] font-bold tracking-wider border-b ${isDarkMode ? "bg-[#182238] text-gray-300 border-[#263149]" : "bg-slate-100/80 text-slate-600 border-gray-200"}`}>
+            <div className={`hidden md:grid grid-cols-[2.5fr_1.3fr_1.2fr_1fr] gap-4 px-6 py-3.5 text-[10px]] font-bold tracking-wider border-b ${isDarkMode ? "bg-[#182238] text-gray-300 border-[#263149]" : "bg-slate-100/80 text-slate-600 border-gray-200"}`}>
               <span>User</span>
               <span>Role</span>
               <span>Status</span>
@@ -430,7 +507,10 @@ const handleViewCV = async (request) => {
               />
             )}
           </div>
-      </>
+        </>
+      )}
+
+      {cvLoading && <CVModalSkeleton isDarkMode={isDarkMode} />}
 
       {showCVModal && !cvLoading && (
         <CVDetailsModal data={selectedRequest} onClose={() => setShowCVModal(false)} />

@@ -50,16 +50,7 @@ export const WorkspaceProvider = ({ children }) => {
     }
   });
 
-  // Warm start: if this tab already has a saved workspace selection we can
-  // let pages fetch immediately and refresh the workspace list in background.
-  const warmStartRef = useRef(
-    !!sessionStorage.getItem("token") &&
-      (!!sessionStorage.getItem("activeWorkspace") ||
-        sessionStorage.getItem("allWorkspacesSelected") === "true" ||
-        sessionStorage.getItem("role")?.replace(/\s+/g, "").toLowerCase() ===
-          "superadmin")
-  );
-  const [workspaceReady, setWorkspaceReady] = useState(warmStartRef.current);
+  const [workspaceReady, setWorkspaceReady] = useState(false);
 
   // Remember which token the workspace was already loaded for,
   // so we do not load everything a second time on page refresh.
@@ -79,9 +70,7 @@ export const WorkspaceProvider = ({ children }) => {
     lastInitTokenRef.current = token;
 
     try {
-      // First run with a saved selection: stay "ready", refresh quietly.
-      if (warmStartRef.current) warmStartRef.current = false;
-      else setWorkspaceReady(false);
+      setWorkspaceReady(false);
 
       const role = userRole?.trim().toLowerCase().replace(/\s+/g, "");
 

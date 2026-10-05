@@ -29,6 +29,7 @@ const AdminTasks = () => {
   const [tasks, setTasks] = useState([]);
   const [project, setProject] = useState(null);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [loading, setLoading] = useState(true);
   const hasLoadedOnceRef = useRef(false);
   const [viewMode, setViewMode] = useState("grid");
   const [currentPage, setCurrentPage] = useState(1);
@@ -66,7 +67,7 @@ const AdminTasks = () => {
   if (!token) {
     console.error("No authentication token found.");
     setTasks([]);
-
+    setLoading(false);
     return;
   }
 
@@ -75,7 +76,7 @@ const AdminTasks = () => {
     const cachedData = adminTasksCache.get(cacheKey);
 
     if (!hasLoadedOnceRef.current && !cachedData) {
-
+      setLoading(true);
     }
 
     const { data } = await axios.get(
@@ -114,7 +115,7 @@ const AdminTasks = () => {
       setTasks([]);
     }
   } finally {
-   
+    setLoading(false);
     hasLoadedOnceRef.current = true;
   }
 }, [token, projectId, apiConfig]);
@@ -123,7 +124,7 @@ const AdminTasks = () => {
   if (!projectId) {
     setTasks([]);
     setProject(null);
-    
+    setLoading(false);
     return;
   }
 
@@ -136,7 +137,7 @@ const AdminTasks = () => {
       setProject(cachedData.project);
     }
 
-   
+    setLoading(false);
     hasLoadedOnceRef.current = true;
   }
 
@@ -438,7 +439,22 @@ useEffect(() => {
       </div>
 
       <div className="flex-1 min-w-0 w-full">
-       {sortedTasks.length ? (
+        {loading ? (
+          <div
+            className={`grid grid-cols-1 ${
+              viewMode === "grid"
+                ? "min-[600px]:grid-cols-2 xl:grid-cols-3"
+                : ""
+            } gap-4 min-[430px]:gap-5 sm:gap-6 pb-6`}
+          >
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div
+                key={i}
+                className={`h-48 rounded-2xl border animate-pulse ${panel}`}
+              />
+            ))}
+          </div>
+        ) : sortedTasks.length ? (
           <>
             <div
               className={

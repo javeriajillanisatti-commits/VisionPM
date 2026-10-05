@@ -50,11 +50,11 @@ const normalizeDashboard = data => {
 };
 
 const AdminDashboard = () => {
-  const liveTick = useLiveTick();
+  const liveTick = useLiveTick({ resources: ["projects", "tasks", "users", "workspaces"] });
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
   const [dashboard, setDashboard] = useState(initialDashboard);
-  
+  const [loading, setLoading] = useState(true);
   const hasLoadedOnce = useRef(false);
   const workspaceId = activeWorkspace?._id || null;
 
@@ -75,12 +75,14 @@ useEffect(() => {
 
   if (cachedDashboard) {
     setDashboard(cachedDashboard);
+    setLoading(false);
     hasLoadedOnce.current = true;
   }
 
   const load = async () => {
     try {
       if (!hasLoadedOnce.current) {
+        setLoading(true);
       }
 
       const data = await getDashboardData(workspaceId);
@@ -98,6 +100,7 @@ useEffect(() => {
       }
     } finally {
       if (mounted) {
+        setLoading(false);
         hasLoadedOnce.current = true;
       }
     }
@@ -115,6 +118,74 @@ useEffect(() => {
     totalProjects
       ? Math.round((dashboard.statusOverview[key] / totalProjects) * 100)
       : 0;
+
+  if (loading) {
+    return (
+      <div
+        className={`w-full min-h-full px-3 sm:px-5 md:px-6 lg:px-10 pt-3 sm:pt-4 pb-4 sm:pb-6 lg:pb-10 space-y-5 sm:space-y-7 overflow-x-hidden ${
+          isDarkMode ? "bg-[#05091D]" : "bg-gray-50"
+        }`}
+      >
+        <div className="space-y-3">
+          {[["h-9", "w-40"], ["h-4", "w-72"]].map(([h, w]) => (
+            <div
+              key={h}
+              className={`${h} ${w} max-w-full rounded-lg animate-pulse ${
+                isDarkMode ? "bg-[#111936]" : "bg-gray-200"
+              }`}
+            />
+          ))}
+        </div>
+
+        {[4, 3].map(count => (
+          <section key={count}>
+            <div
+              className={`h-7 w-56 max-w-full rounded-lg animate-pulse ${
+                isDarkMode ? "bg-[#111936]" : "bg-gray-200"
+              }`}
+            />
+            <div
+              className={`mt-4 sm:mt-6 grid grid-cols-1 ${
+                count === 4 ? "sm:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3"
+              } gap-4 sm:gap-5`}
+            >
+              {Array.from({ length: count }, (_, i) => (
+                <div
+                  key={i}
+                  className={`h-28 sm:h-32 rounded-[1.25rem] animate-pulse ${
+                    isDarkMode ? "bg-[#11182B]" : "bg-white"
+                  }`}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+
+        <section>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+            {[1, 2].map(i => (
+              <div
+                key={i}
+                className={`h-72 sm:h-80 rounded-[1.25rem] animate-pulse ${
+                  isDarkMode ? "bg-[#11182B]" : "bg-white"
+                }`}
+              />
+            ))}
+          </div>
+        </section>
+
+        {[80, 72].map(height => (
+          <section key={height}>
+            <div
+              className={`h-${height} rounded-[1.25rem] animate-pulse ${
+                isDarkMode ? "bg-[#11182B]" : "bg-white"
+              }`}
+            />
+          </section>
+        ))}
+      </div>
+    );
+  }
 
   const stats = [
     ["Workspaces", dashboard.workspaces, LayoutDashboard, "bg-gray-100", "bg-[#18223A]", "text-gray-500", "text-gray-300", "bg-gray-400"],

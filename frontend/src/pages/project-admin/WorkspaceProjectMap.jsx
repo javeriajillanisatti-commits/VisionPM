@@ -23,6 +23,7 @@ const cachedProjects = workspaceProjectMapCache.get(cacheKey);
 
 const [projects, setProjects] = useState(cachedProjects || []);
 const [expandedProject, setExpandedProject] = useState(null);
+const [loading, setLoading] = useState(!cachedProjects);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -36,7 +37,7 @@ useEffect(() => {
   const load = async () => {
     if (!workspaceId) {
       setError("Workspace ID is missing.");
-      
+      setLoading(false);
       return;
     }
 
@@ -45,9 +46,9 @@ useEffect(() => {
 
     if (cachedData) {
       setProjects(cachedData);
-    
+      setLoading(false);
     } else {
-  
+      setLoading(true);
     }
 
     try {
@@ -76,7 +77,7 @@ useEffect(() => {
         setProjects([]);
       }
     } finally {
-      
+      setLoading(false);
     }
   };
 
@@ -183,6 +184,20 @@ useEffect(() => {
     setSearchTerm("");
     setStatusFilter("All");
   };
+
+  if (loading) {
+    return (
+      <div className={`min-h-screen p-3 sm:p-4 md:p-6 ${isDarkMode ? "bg-slate-950" : "bg-gray-50"}`}>
+        <div className={`max-w-[1450px] mx-auto border rounded-2xl sm:rounded-3xl p-10 text-center ${
+          isDarkMode ? "bg-slate-900 border-slate-800" : "bg-white border-gray-200"
+        }`}>
+          <p className={`text-sm font-medium ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+            Loading workspace project map...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const inputStyle = isDarkMode
     ? "bg-slate-900 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/60"
