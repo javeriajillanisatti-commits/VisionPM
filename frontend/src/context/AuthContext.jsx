@@ -25,9 +25,31 @@ const setAxiosToken = token => {
 
 const getToken = () => sessionStorage.getItem("token");
 
+// Last known user, so the app shell can render instantly on refresh while
+// the real /auth/me check runs quietly in the background.
+const readCachedUser = () => {
+  try {
+    if (!getToken()) return null;
+    const raw = sessionStorage.getItem("cachedUser");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+const cacheUser = user => {
+  try {
+    if (user) sessionStorage.setItem("cachedUser", JSON.stringify(user));
+    else sessionStorage.removeItem("cachedUser");
+  } catch {}
+};
+
+// Make sure axios already has the token before any page effect runs.
+if (getToken()) axios.defaults.headers.common.Authorization = `Bearer ${getToken()}`;
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(readCachedUser);
+  // No full-screen spinner when we already know who the user is.
+  const [loading, setLoading] = useState(() => !readCachedUser());
   const socketRef = useRef(null);
 
   // Connect Socket.IO
@@ -93,23 +115,28 @@ export const AuthProvider = ({ children }) => {
 
       setAxiosToken(token);
 
+      // Cached user: open the socket right away instead of waiting for /me.
+      if (readCachedUser()) connectSocket(token);
+
       try {
         console.log("📡 CHECKING AUTH USER...");
         const res = await axios.get(`${API_URL}/api/auth/me`);
         console.log("✅ AUTH USER RESPONSE:", res.data);
 
         setUser(res.data.user);
+        cacheUser(res.data.user);
 
         if (res.data.user?.role)
           sessionStorage.setItem("role", res.data.user.role);
 
-        connectSocket(token);
+        if (!socketRef.current) connectSocket(token);
         window.dispatchEvent(new Event("userAuthenticated"));
       } catch (error) {
         console.error("❌ Authentication check failed:", error);
 
         sessionStorage.removeItem("token");
         sessionStorage.removeItem("role");
+        cacheUser(null);
         setAxiosToken(null);
         setUser(null);
         socketRef.current?.disconnect();
@@ -149,6 +176,7 @@ export const AuthProvider = ({ children }) => {
       sessionStorage.setItem("role", userData.role);
 
     setUser(userData);
+    cacheUser(userData);
     connectSocket(token);
 
     window.dispatchEvent(new Event("userAuthenticated"));
@@ -172,6 +200,10 @@ export const AuthProvider = ({ children }) => {
 
       sessionStorage.removeItem("token");
       sessionStorage.removeItem("role");
+      // Do not let the next login in this tab inherit this user's cached data.
+      sessionStorage.removeItem("cachedUser");
+      sessionStorage.removeItem("activeWorkspace");
+      sessionStorage.removeItem("allWorkspacesSelected");
       setAxiosToken(null);
       setUser(null);
 

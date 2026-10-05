@@ -62,6 +62,12 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Gzip responses (smaller payloads = faster first load). Optional: skipped if the package is not installed.
+try {
+  app.use(require("compression")());
+} catch (e) {
+  console.warn("compression not installed, run: npm i compression");
+}
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const { broadcastDataChanged } = require("./config/realtime");
@@ -86,6 +92,9 @@ app.use("/api", (req, res, next) => {
 
   next();
 });
+
+// Tiny endpoint (no database) used to wake the server early and for uptime pings.
+app.get("/health", (req, res) => res.json({ ok: true }));
 
 app.get("/", (req, res) => {
   res.send("Backend Running");

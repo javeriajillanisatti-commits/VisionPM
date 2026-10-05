@@ -253,7 +253,10 @@ const getWorkspaceMonitorData = async (workspaceId, userId, userRole) => {
         todo,
         inProgress,
         completed,
-        progress: total ? Math.round((completed / total) * 100) : 0,
+        // completed = 100%, in progress = 50%, todo = 0%
+        progress: total
+          ? Math.round((inProgress * 50 + completed * 100) / total)
+          : 0,
         tasks: tasks.map((task) => formatTask(task)),
       };
     })
@@ -363,6 +366,9 @@ const getWorkspaceProjectMap = async (workspaceId, userId, userRole) => {
       const completed = formattedTasks.filter(
         (task) => task.status.toLowerCase() === "completed"
       ).length;
+      const inProgressCount = formattedTasks.filter((task) =>
+        ["in progress", "inprogress"].includes(task.status.toLowerCase())
+      ).length;
 
       return {
         id: project._id.toString(),
@@ -370,7 +376,9 @@ const getWorkspaceProjectMap = async (workspaceId, userId, userRole) => {
         description: project.description || "",
         status: project.status || "Planning",
         progress: formattedTasks.length
-          ? Math.round((completed / formattedTasks.length) * 100)
+          ? Math.round(
+              (inProgressCount * 50 + completed * 100) / formattedTasks.length
+            )
           : 0,
         totalTasks: formattedTasks.length,
         tasks: formattedTasks,
@@ -441,7 +449,7 @@ const getProjectHealth = async (workspaceId, userId, userRole) => {
       ).length;
 
       const progress = totalTasks
-        ? Math.round((completedTasks / totalTasks) * 100)
+        ? Math.round((inProgressTasks * 50 + completedTasks * 100) / totalTasks)
         : 0;
 
       let score = 100;
