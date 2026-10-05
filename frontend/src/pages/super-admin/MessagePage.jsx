@@ -7,16 +7,6 @@ import MessageDetail from "../../components/messagedetail/MessageDetail";
 const messagesCache = new Map();
 
 
-// Avatar colors
-const AVATAR_COLORS = [
-  { bg: "bg-blue-100 dark:bg-blue-950/40", text: "text-blue-700 dark:text-blue-400" },
-  { bg: "bg-purple-100 dark:bg-purple-950/40", text: "text-purple-700 dark:text-purple-400" },
-  { bg: "bg-pink-100 dark:bg-pink-950/40", text: "text-pink-700 dark:text-pink-400" },
-  { bg: "bg-amber-100 dark:bg-amber-950/40", text: "text-amber-700 dark:text-amber-400" },
-  { bg: "bg-emerald-100 dark:bg-emerald-950/40", text: "text-emerald-700 dark:text-emerald-400" },
-  { bg: "bg-indigo-100 dark:bg-indigo-950/40", text: "text-indigo-700 dark:text-indigo-400" },
-];
-
 const FilterButton = ({ label, active, count, onClick }) => (
   <button
     type="button"
@@ -163,7 +153,7 @@ const markAsRead = async (id) => {
           </div>
 
           <div className="p-4 sm:p-6">
-
+         
           </div>
         </div>
       </div>
