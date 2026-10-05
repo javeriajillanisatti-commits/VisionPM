@@ -54,7 +54,6 @@ const AdminDashboard = () => {
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
   const [dashboard, setDashboard] = useState(initialDashboard);
-  const [loading, setLoading] = useState(true);
   const hasLoadedOnce = useRef(false);
   const workspaceId = activeWorkspace?._id || null;
 

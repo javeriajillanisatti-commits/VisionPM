@@ -76,7 +76,6 @@ const AdminReport = () => {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
- const [loading, setLoading] = useState(true);
 const hasLoadedOnce = useRef(false);
   const [projectOpen, setProjectOpen] = useState(false);
   const [dateRangeOpen, setDateRangeOpen] = useState(false);

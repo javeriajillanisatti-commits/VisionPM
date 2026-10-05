@@ -29,7 +29,6 @@ const AdminTasks = () => {
   const [tasks, setTasks] = useState([]);
   const [project, setProject] = useState(null);
   const [showFullDescription, setShowFullDescription] = useState(false);
-  const [loading, setLoading] = useState(true);
   const hasLoadedOnceRef = useRef(false);
   const [viewMode, setViewMode] = useState("grid");
   const [currentPage, setCurrentPage] = useState(1);

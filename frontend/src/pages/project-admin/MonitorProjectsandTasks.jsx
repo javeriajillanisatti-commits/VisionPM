@@ -26,7 +26,6 @@ const cachedMonitorData = monitorProjectsCache.get(cacheKey);
 
 const [projects, setProjects] = useState(cachedMonitorData?.projects || []);
 const [tasks, setTasks] = useState(cachedMonitorData?.tasks || []);
-const [loading, setLoading] = useState(!cachedMonitorData);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);

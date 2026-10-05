@@ -23,7 +23,6 @@ const cachedProjects = workspaceProjectMapCache.get(cacheKey);
 
 const [projects, setProjects] = useState(cachedProjects || []);
 const [expandedProject, setExpandedProject] = useState(null);
-const [loading, setLoading] = useState(!cachedProjects);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");

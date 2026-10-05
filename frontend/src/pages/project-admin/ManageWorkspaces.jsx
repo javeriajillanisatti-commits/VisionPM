@@ -115,7 +115,6 @@ const ManageWorkspaces = () => {
   const [editingWorkspace, setEditingWorkspace] = useState(null);
   const [workspaceToDelete, setWorkspaceToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("");
   const [sortOpen, setSortOpen] = useState(false);
