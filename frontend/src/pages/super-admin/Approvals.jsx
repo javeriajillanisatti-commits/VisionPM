@@ -77,25 +77,6 @@ const StatusDropdown = ({ currentStatus, onRequestChange, isDarkMode }) => {
   );
 };
 
-const CVModalSkeleton = ({ isDarkMode }) => (
-  <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 px-4">
-    <div className={`rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 animate-pulse ${isDarkMode ? "bg-[#11182B] border border-[#263149]" : "bg-white"}`}>
-      <div className="flex items-center gap-4">
-        <Skeleton dark={isDarkMode} className="w-14 h-14 rounded-full" />
-        <div className="space-y-2 flex-1">
-          <Skeleton dark={isDarkMode} className="h-5 w-40" />
-          <Skeleton dark={isDarkMode} className="h-4 w-24" />
-        </div>
-      </div>
-      <div className="space-y-2 pt-4">
-        <Skeleton dark={isDarkMode} className="h-4 w-full" />
-        <Skeleton dark={isDarkMode} className="h-4 w-5/6" />
-        <Skeleton dark={isDarkMode} className="h-4 w-4/6" />
-      </div>
-    </div>
-  </div>
-);
-
 const FilterButton = ({ item, active, count, isDarkMode, onClick }) => (
   <button
     key={item}
@@ -462,7 +443,7 @@ const handleViewCV = async (request) => {
         </>
       )}
 
-      {cvLoading && <CVModalSkeleton isDarkMode={isDarkMode} />}
+  
 
       {showCVModal && !cvLoading && (
         <CVDetailsModal data={selectedRequest} onClose={() => setShowCVModal(false)} />
