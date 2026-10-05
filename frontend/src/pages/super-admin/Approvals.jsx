@@ -118,8 +118,7 @@ const RequestRow = ({ request, isDarkMode, onStatusChange, onViewCV }) => {
           {name}
         </span>
       </div>
-      <div>
-        <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide ${isDarkMode ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-blue-50 text-blue-700 border border-blue-100"}`}>
+      <div><span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide ${isDarkMode ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-blue-50 text-blue-700 border border-blue-100"}`}>
           {request.role || "N/A"}
         </span>
       </div>
@@ -162,6 +161,7 @@ const PaginationBar = ({ currentPage, totalPages, setCurrentPage, isDarkMode }) 
     </div>
   </div>
 );
+
 const ConfirmationModal = ({ isDarkMode, pendingChange, onCancel, onConfirm, isSubmitting }) => (
   <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 px-4">
 <div className={`rounded-2xl shadow-2xl max-w-sm w-full p-6 transition-colors duration-300 ${isDarkMode ? "bg-[#11182B] border border-[#263149]" : "bg-white"}`}>      <h3 className={`text-base font-bold ${isDarkMode ? "text-white" : "text-[#0D1B2A]"}`}> Confirm status change </h3>
@@ -208,7 +208,6 @@ const Approvals = () => {
 const cachedRequests = approvalsCache.get(cacheKey);
 
 const [requests, setRequests] = useState(cachedRequests || []);
-const [initialLoading, setInitialLoading] = useState(!cachedRequests);
   const [cvLoading, setCvLoading] = useState(false);
   const [showCVModal, setShowCVModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -224,12 +223,8 @@ const [initialLoading, setInitialLoading] = useState(!cachedRequests);
   }, []);
 
 const fetchRequests = useCallback(
-  async (showLoader = false) => {
+  async () => {
     const cachedData = approvalsCache.get(cacheKey);
-
-    if (showLoader && !cachedData) {
-      setInitialLoading(true);
-    }
 
     try {
       const response = await approvalService.getPendingRequests();
@@ -251,8 +246,6 @@ const fetchRequests = useCallback(
           "error"
         );
       }
-    } finally {
-      setInitialLoading(false);
     }
   },
   [showToast]
@@ -263,17 +256,15 @@ useEffect(() => {
 
   if (cachedData) {
     setRequests(cachedData);
-    setInitialLoading(false);
-    fetchRequests(false);
-  } else {
-    fetchRequests(true);
   }
+
+  fetchRequests();
 }, [fetchRequests]);
 
 useEffect(() => {
   if (!liveTick) return;
 
-  fetchRequests(false);
+  fetchRequests();
 }, [liveTick, fetchRequests]);
 
   useEffect(() => setCurrentPage(1), [statusFilter]);
@@ -316,7 +307,7 @@ useEffect(() => {
         await approvalService.rejectRequest(userId);
         showToast(`${userName} rejected successfully`, "error");
       }
-      await fetchRequests(false);
+      await fetchRequests();
       setPendingChange(null);
     } catch (error) {
       showToast(error.response?.data?.message || error.message || "Something went wrong", "error");
@@ -385,8 +376,7 @@ const handleViewCV = async (request) => {
 
   return (
     <div className={`w-full p-3 sm:p-5 lg:p-6 space-y-6 transition-colors duration-300 ${isDarkMode ? "bg-[#05091D] text-white" : "bg-gray-50 text-gray-900"}`}>
-      {initialLoading ? <FullPageSkeleton isDarkMode={isDarkMode} /> : (
-        <>
+      <>
           <div className="space-y-1">
             <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}> Approval Requests </h1>
             <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}> Manage and review account approval requests</p>
@@ -413,7 +403,7 @@ const handleViewCV = async (request) => {
 </div>
             </div>
 
-            <div className={`hidden md:grid grid-cols-[2.5fr_1.3fr_1.2fr_1fr] gap-4 px-6 py-3.5 text-[10px]] font-bold tracking-wider border-b ${isDarkMode ? "bg-[#182238] text-gray-300 border-[#263149]" : "bg-slate-100/80 text-slate-600 border-gray-200"}`}>
+            <div className={`hidden md:grid grid-cols-[2.5fr_1.3fr_1.2fr_1fr] gap-4 px-6 py-3.5 text-[10px] font-bold tracking-wider border-b ${isDarkMode ? "bg-[#182238] text-gray-300 border-[#263149]" : "bg-slate-100/80 text-slate-600 border-gray-200"}`}>
               <span>User</span>
               <span>Role</span>
               <span>Status</span>
@@ -440,10 +430,7 @@ const handleViewCV = async (request) => {
               />
             )}
           </div>
-        </>
-      )}
-
-  
+      </>
 
       {showCVModal && !cvLoading && (
         <CVDetailsModal data={selectedRequest} onClose={() => setShowCVModal(false)} />
