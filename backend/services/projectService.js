@@ -32,8 +32,17 @@ const syncProjectCompletionStatus = async project => {
     return;
   }
 
+  const hasInProgressTask = tasks.some(task => task.status === "In Progress");
   const allCompleted = tasks.every(task => task.status === "Completed");
 
+  // Task activity has priority: any In Progress task makes the project In Progress.
+  if (hasInProgressTask && project.status !== "In Progress") {
+    project.status = "In Progress";
+    await project.save();
+    return;
+  }
+
+  // A project becomes Completed only when every project task is Completed.
   if (allCompleted && project.status !== "Completed") {
     project.status = "Completed";
     await project.save();
@@ -338,6 +347,38 @@ const updateProject = async (
         status: 409,
         message: "Project name already exists. Choose a different name.",
       };
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updateData, "status")) {
+    const manualStatusChangeAllowed = ["On Hold", "Cancelled"];
+    const isCurrentStatus = updateData.status === existingProject.status;
+
+    if (!isCurrentStatus && !manualStatusChangeAllowed.includes(updateData.status)) {
+      return {
+        status: 400,
+        field: "status",
+        message:
+          "Project status can only be changed manually to On Hold or Cancelled. In Progress and Completed are updated automatically based on task status.",
+      };
+    }
+
+    // A project cannot be manually put On Hold/Cancelled while any task is
+    // already In Progress. Task activity has priority over manual status.
+    if (manualStatusChangeAllowed.includes(updateData.status)) {
+      const hasInProgressTask = await Task.exists({
+        project: projectId,
+        status: "In Progress",
+      });
+
+      if (hasInProgressTask) {
+        return {
+          status: 400,
+          field: "status",
+          message:
+            "Project cannot be put On Hold or Cancelled while a task is In Progress.",
+        };
+      }
     }
   }
 

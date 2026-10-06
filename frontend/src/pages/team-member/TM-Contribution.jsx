@@ -9,6 +9,21 @@ import ContributionMap from "../../components/contribution/ContributionMap";
 import ContributionDetails from "../../components/contribution/ContributionDetails";
 import { useTheme } from "../../context/ThemeContext";
 
+//  Skeleton loader
+const Skeleton = ({ dark, className = "" }) => (
+  <div className={`${className} rounded-md ${dark ? "bg-slate-800" : "bg-gray-200"}`} />
+);
+
+const ContributionMapSkeleton = ({ isDarkMode }) => (
+  <div className={`border rounded-3xl shadow-sm p-6 h-full min-h-[300px] animate-pulse flex flex-col gap-5 ${isDarkMode ? "bg-[#11182B] border-[#263149]" : "bg-white border-gray-100"}`}>
+    <div className="flex items-center gap-3">
+      <Skeleton dark={isDarkMode} className="w-12 h-12 rounded-full" />
+      <Skeleton dark={isDarkMode} className="h-5 w-40" />
+    </div>
+    <Skeleton dark={isDarkMode} className="flex-1 min-h-[200px] w-full rounded-2xl" />
+  </div>
+);
+
 const emptyProfile = { fullName: "", profilePic: "" };
 const tmContributionProjectsCache = new Map();
 const tmContributionDataCache = new Map();
@@ -206,14 +221,7 @@ useEffect(() => {
   // Render main content
   const content = loading ? (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-      <div className="lg:col-span-2">
-        <div className={`border rounded-3xl shadow-sm p-16 text-center h-full min-h-[300px] ${isDarkMode ? "bg-[#11182B] border-[#263149]" : "bg-white border-gray-100"}`}>
-          <div className="flex flex-col items-center justify-center h-full gap-4">
-            <div className={`w-10 h-10 border-4 rounded-full animate-spin ${isDarkMode ? "border-blue-950 border-t-blue-500" : "border-blue-100 border-t-blue-600"}`} />
-            <p className="text-sm font-medium text-gray-400">Loading contribution map...</p>
-          </div>
-        </div>
-      </div>
+            <div className="lg:col-span-2"><ContributionMapSkeleton isDarkMode={isDarkMode} /></div>
       <div>{placeholder}</div>
     </div>
   ) : !selectedProjectId ? (

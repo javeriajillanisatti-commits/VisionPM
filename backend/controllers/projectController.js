@@ -234,13 +234,24 @@ const validateProjectPayload = (body, { isCreate = false } = {}) => {
     };
   }
 
-  // Keep backend status rules aligned with the Project form:
-  // Completed/Cancelled are not valid for creation, but remain valid while editing.
-  const allowedStatuses = isCreate
-    ? ["Planning", "In Progress", "On Hold"]
-    : ["Planning", "In Progress", "On Hold", "Completed", "Cancelled"];
-
-  if (!allowedStatuses.includes(body?.status)) {
+  // Keep backend status rules aligned with the Project form.
+  // Creation starts only in Planning. During edit, the current status may be
+  // submitted unchanged, while manual status changes are limited to On Hold
+  // and Cancelled. In Progress/Completed are controlled by task activity.
+  if (isCreate) {
+    if (body?.status !== "Planning") {
+      return {
+        message: "New projects can only use Planning status.",
+        field: "status",
+      };
+    }
+  } else if (body?.status !== undefined && ![
+    "Planning",
+    "In Progress",
+    "On Hold",
+    "Completed",
+    "Cancelled",
+  ].includes(body.status)) {
     return {
       message: "Invalid project status.",
       field: "status",

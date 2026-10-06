@@ -31,6 +31,21 @@ const getPosition = (rect, input = false) => {
   return { top, left, width, height };
 };
 
+const getMenuPosition = (rect, bounds, alignRight, height) => {
+  const width = Math.min(176, window.innerWidth - 16, bounds.width - 16);
+  const minLeft = bounds.left + 8;
+  const maxLeft = bounds.right - width - 8;
+  const left = alignRight ? rect.right - width : rect.left;
+  const below = bounds.bottom - rect.bottom - 8;
+  const above = rect.top - bounds.top - 8;
+  const top = below >= height
+    ? rect.bottom + 4
+    : above >= height + 4
+      ? rect.top - height - 4
+      : Math.max(bounds.top + 8, Math.min(rect.bottom + 4, bounds.bottom - height - 8));
+  return { top, left: Math.max(minLeft, Math.min(left, maxLeft)), width };
+};
+
 const Picker = ({ position, reactionId, input, onClose, onEmoji }) => {
   if (!position) return null;
   return createPortal(
@@ -59,12 +74,15 @@ const Comments = ({ taskId, userRole, onCountChange }) => {
   const [reactionPosition, setReactionPosition] = useState(null);
   const [inputPickerPosition, setInputPickerPosition] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
+  const [menuPosition, setMenuPosition] = useState(null);
   const [editingId, setEditingId] = useState(null);
 
   const scrollRef = useRef(null);
   const socketRef = useRef(null);
   const reactionButtonRefs = useRef({});
   const inputButtonRef = useRef(null);
+  const menuButtonRef = useRef(null);
+  const menuDetailsRef = useRef({ alignRight: false, height: 44 });
 
   useEffect(() => onCountChange?.(comments.length), [comments, onCountChange]);
 
@@ -75,23 +93,30 @@ const Comments = ({ taskId, userRole, onCountChange }) => {
         setReactionPosition(getPosition(reactionButtonRefs.current[activeReactionPickerId].getBoundingClientRect()));
       if (showInputPicker && inputButtonRef.current)
         setInputPickerPosition(getPosition(inputButtonRef.current.getBoundingClientRect(), true));
+      if (openMenu && menuButtonRef.current && scrollRef.current)
+        setMenuPosition(getMenuPosition(menuButtonRef.current.getBoundingClientRect(), scrollRef.current.getBoundingClientRect(), menuDetailsRef.current.alignRight, menuDetailsRef.current.height));
     };
     window.addEventListener("resize", reposition);
     window.addEventListener("orientationchange", reposition);
+    window.addEventListener("scroll", reposition, true);
     window.visualViewport?.addEventListener("resize", reposition);
     window.visualViewport?.addEventListener("scroll", reposition);
     return () => {
       window.removeEventListener("resize", reposition);
       window.removeEventListener("orientationchange", reposition);
+      window.removeEventListener("scroll", reposition, true);
       window.visualViewport?.removeEventListener("resize", reposition);
       window.visualViewport?.removeEventListener("scroll", reposition);
     };
-  }, [activeReactionPickerId, showInputPicker]);
+  }, [activeReactionPickerId, openMenu, showInputPicker]);
 
   // Close menus outside
   useEffect(() => {
     const close = (e) => {
-      if (!e.target.closest("[data-comment-menu]")) setOpenMenu(null);
+      if (!e.target.closest("[data-comment-menu]")) {
+        setOpenMenu(null);
+        setMenuPosition(null);
+      }
       if (!e.target.closest("[data-reaction-picker]") && !e.target.closest("[data-reaction-trigger]")) {
         setActiveReactionPickerId(null);
         setReactionPosition(null);
@@ -179,6 +204,21 @@ const Comments = ({ taskId, userRole, onCountChange }) => {
     setNewComment("");
     setShowInputPicker(false);
     setInputPickerPosition(null);
+  };
+
+  const toggleCommentMenu = (e, commentId, mine) => {
+    e.stopPropagation();
+    if (openMenu === commentId) {
+      setOpenMenu(null);
+      setMenuPosition(null);
+      return;
+    }
+    const height = (mine ? 3 : 1) * 36 + 8;
+    menuButtonRef.current = e.currentTarget;
+    menuDetailsRef.current = { alignRight: mine, height };
+    if (scrollRef.current)
+      setMenuPosition(getMenuPosition(e.currentTarget.getBoundingClientRect(), scrollRef.current.getBoundingClientRect(), mine, height));
+    setOpenMenu(commentId);
   };
 
   // Delete comment
@@ -272,12 +312,12 @@ const Comments = ({ taskId, userRole, onCountChange }) => {
 
                 {(mine || canDeleteEveryone) && (
                   <div className="relative shrink-0" data-comment-menu>
-                    <button type="button" onClick={() => setOpenMenu(openMenu === commentId ? null : commentId)} className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 rounded-full text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-slate-800 transition-opacity" title="Comment options">
+                    <button type="button" onClick={(e) => toggleCommentMenu(e, commentId, mine)} className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 rounded-full text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-slate-800 transition-opacity" title="Comment options">
                       <MoreHorizontal size={15} />
                     </button>
 
-                    {openMenu === commentId && (
-                      <div className={`absolute top-full mt-1 w-44 max-w-[calc(100vw-24px)] bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl p-1 z-40 ${mine ? "right-0" : "left-0"}`}>
+                    {openMenu === commentId && menuPosition && createPortal(
+                      <div data-comment-menu className="fixed bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl p-1 z-[99999]" style={menuPosition}>
                         {mine && (
                           <button type="button" onClick={() => startEdit(c)} className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg flex items-center gap-2">
                             <Pencil size={13} /> Edit
@@ -293,7 +333,8 @@ const Comments = ({ taskId, userRole, onCountChange }) => {
                             <Trash2 size={13} /> Delete for everyone
                           </button>
                         )}
-                      </div>
+                      </div>,
+                      document.body
                     )}
                   </div>
                 )}

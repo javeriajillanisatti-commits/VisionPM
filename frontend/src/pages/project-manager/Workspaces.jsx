@@ -26,6 +26,7 @@ const cachedMonitorData = workspaceMonitorCache.get(workspaceCacheKey);
 const [workspaces, setWorkspaces] = useState(cachedWorkspaces || []);
 const [monitorData, setMonitorData] = useState(cachedMonitorData || []);
   const [attentionOpen, setAttentionOpen] = useState(null);
+  const [loading, setLoading] = useState(!cachedWorkspaces);
   useEffect(() => {
   let cancelled = false;
   let requestInFlight = false;
@@ -59,6 +60,7 @@ const [monitorData, setMonitorData] = useState(cachedMonitorData || []);
       }
     } finally {
       requestInFlight = false;
+      if (!cancelled) setLoading(false);
     }
   };
 
@@ -66,10 +68,12 @@ const [monitorData, setMonitorData] = useState(cachedMonitorData || []);
 
   if (cachedData) {
     setWorkspaces(cachedData);
+    setLoading(false);
 
     // Background refresh without clearing existing UI
     syncWorkspaces();
   } else {
+    setLoading(true);
     syncWorkspaces();
   }
 
@@ -105,7 +109,9 @@ const [monitorData, setMonitorData] = useState(cachedMonitorData || []);
       try {
         const monitorResponse = await getWorkspaceMonitorData(workspaceId);
         if (!cancelled) {
-          setMonitorData(Array.isArray(monitorResponse) ? monitorResponse : []);
+          const nextMonitorData = Array.isArray(monitorResponse) ? monitorResponse : [];
+          setMonitorData(nextMonitorData);
+          workspaceMonitorCache.set(workspaceCacheKey, nextMonitorData);
         }
       } catch (error) {
         if (!cancelled) console.error("Error syncing workspace data:", error);
@@ -114,6 +120,8 @@ const [monitorData, setMonitorData] = useState(cachedMonitorData || []);
       }
     };
 
+    const cachedData = workspaceMonitorCache.get(workspaceCacheKey);
+    if (cachedData) setMonitorData(cachedData);
     syncOverview();
 
     const handleFocus = () => syncOverview();
@@ -129,7 +137,7 @@ const [monitorData, setMonitorData] = useState(cachedMonitorData || []);
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [workspaceId, liveTick]);
+  }, [workspaceId, workspaceCacheKey, liveTick]);
   const overview = useMemo(() => {
     const projects = monitorData;
     const tasks = projects.flatMap((project) => project.tasks || []);
@@ -227,7 +235,48 @@ const [monitorData, setMonitorData] = useState(cachedMonitorData || []);
       </div>
 
       <div className="flex-1 min-h-[350px]">
-        {workspaces.length > 0 ? (
+        {loading ? (
+          <div className="flex flex-col gap-5 w-full animate-pulse">
+            <div className="w-full rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6">
+              <div className="flex flex-col gap-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2 flex-1 min-w-0">
+                    <div className="h-5 w-2/5 min-w-[150px] rounded bg-gray-200 dark:bg-slate-800" />
+                    <div className="h-3 w-3/5 min-w-[190px] rounded bg-gray-100 dark:bg-slate-800/80" />
+                  </div>
+                  <div className="h-8 w-24 rounded-lg bg-gray-200 dark:bg-slate-800 shrink-0" />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <div key={index} className="rounded-xl border border-gray-100 dark:border-slate-800/80 p-3 space-y-2">
+                      <div className="h-2.5 w-16 rounded bg-gray-200 dark:bg-slate-800" />
+                      <div className="h-4 w-12 rounded bg-gray-200 dark:bg-slate-800" />
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <div className="h-2.5 w-24 rounded bg-gray-200 dark:bg-slate-800" />
+                  <div className="h-2.5 w-full rounded-full bg-gray-100 dark:bg-slate-800" />
+                </div>
+              </div>
+            </div>
+
+            <section className="min-w-0 h-72 rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-5 w-5 rounded bg-gray-200 dark:bg-slate-800" />
+                <div className="space-y-2">
+                  <div className="h-4 w-36 rounded bg-gray-200 dark:bg-slate-800" />
+                  <div className="h-2.5 w-56 max-w-[70vw] rounded bg-gray-100 dark:bg-slate-800/80" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="h-11 w-full rounded-xl bg-gray-100 dark:bg-slate-800/80" />
+                ))}
+              </div>
+            </section>
+          </div>
+        ) : workspaces.length > 0 ? (
           <>
             <div className="flex flex-col gap-5">
               {workspaces.map((ws) => (

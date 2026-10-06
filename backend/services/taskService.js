@@ -106,9 +106,13 @@ const syncProjectCompletionStatus = async (projectId) => {
   if (!project) return;
 
   const tasks = await Task.find({ project: projectId }).select("status");
+  const hasInProgressTask = tasks.some((task) => task.status === "In Progress");
   const allCompleted = tasks.length > 0 && tasks.every((task) => task.status === "Completed");
 
-  if (allCompleted && project.status !== "Completed") {
+  if (hasInProgressTask && project.status !== "In Progress") {
+    project.status = "In Progress";
+    await project.save();
+  } else if (allCompleted && project.status !== "Completed") {
     project.status = "Completed";
     await project.save();
   } else if (!allCompleted && project.status === "Completed") {
@@ -890,6 +894,9 @@ const updateTask = async (taskId, updateData, userId = null, userRole = null) =>
       project: existingTask.project,
     }).select("status");
 
+    const hasInProgressTask = siblingTasks.some(
+      (item) => item.status === "In Progress"
+    );
     const allCompleted =
       siblingTasks.length > 0 &&
       siblingTasks.every((item) => item.status === "Completed");
@@ -897,7 +904,9 @@ const updateTask = async (taskId, updateData, userId = null, userRole = null) =>
     const project = await Project.findById(existingTask.project);
 
     if (project) {
-      if (allCompleted && project.status !== "Completed")
+      if (hasInProgressTask && project.status !== "In Progress")
+        project.status = "In Progress";
+      else if (allCompleted && project.status !== "Completed")
         project.status = "Completed";
       else if (!allCompleted && project.status === "Completed")
         project.status = "In Progress";

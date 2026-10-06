@@ -7,12 +7,82 @@ import SubtaskForm from "../../components/forms/SubtaskForm";
 import UploadFile from "../../components/tasks/UploadFile";
 import Comments from "../../components/tasks/Comments";
 import TaskMetaCard from "../../components/tasks/TaskMeta"; 
-import { ArrowLeft, AlertTriangle, Plus,  } from "lucide-react"; 
+import { ArrowLeft, AlertTriangle, Plus } from "lucide-react"; 
 import { getTaskById, updateTask, createSubtask, updateSubtask, deleteSubtask } from "../../services/taskService";
 import { getProjectMembers } from "../../services/taskService";
-const taskDetailsCache = new Map();
 
+const taskDetailsCache = new Map();
 const SIZE_POINTS = { XS: 5, S: 10, M: 20, L: 40, XL: 80 };
+
+/* Skeleton Loader Component for TaskDetails Page */
+const TaskDetailsSkeleton = ({ isDarkMode }) => {
+  const skeletonBase = isDarkMode ? "bg-slate-800/60" : "bg-gray-200";
+  const sectionCardStyle = "bg-white dark:bg-slate-900 rounded-2xl border border-gray-200/80 dark:border-slate-800 shadow-sm p-5 sm:p-6";
+
+  return (
+    <div className="w-full p-4 sm:p-6 lg:p-8 space-y-6 bg-transparent min-h-screen font-sans animate-pulse max-w-6xl mx-auto">
+      {/* Header Skeleton */}
+      <div className="flex items-center gap-4">
+        <div className={`w-10 h-10 rounded-xl shrink-0 ${skeletonBase}`} />
+        <div className={`h-8 w-2/3 sm:w-1/2 rounded-lg ${skeletonBase}`} />
+      </div>
+
+      {/* Task Meta Card Skeleton */}
+      <div className={sectionCardStyle}>
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-2">
+                <div className={`h-4 w-20 rounded ${skeletonBase}`} />
+                <div className={`h-10 w-full rounded-xl ${skeletonBase}`} />
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <div className={`h-4 w-24 rounded ${skeletonBase}`} />
+            <div className={`h-24 w-full rounded-xl ${skeletonBase}`} />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div className="space-y-2">
+              <div className={`h-4 w-28 rounded ${skeletonBase}`} />
+              <div className={`h-12 w-full rounded-xl ${skeletonBase}`} />
+            </div>
+            <div className="space-y-2">
+              <div className={`h-4 w-28 rounded ${skeletonBase}`} />
+              <div className={`h-12 w-full rounded-xl ${skeletonBase}`} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Subtasks Section Skeleton */}
+      <div className={sectionCardStyle}>
+        <div className="flex justify-between items-center mb-4">
+          <div className="space-y-2">
+            <div className={`h-5 w-24 rounded ${skeletonBase}`} />
+            <div className={`h-3 w-48 rounded ${skeletonBase}`} />
+          </div>
+          <div className={`h-9 w-32 rounded-xl ${skeletonBase}`} />
+        </div>
+        <div className={`h-[250px] w-full rounded-xl ${skeletonBase}`} />
+      </div>
+
+      {/* Attachments Section Skeleton */}
+      <div className={sectionCardStyle}>
+        <div className={`h-5 w-52 rounded mb-4 ${skeletonBase}`} />
+        <div className={`h-32 w-full rounded-xl ${skeletonBase}`} />
+      </div>
+
+      {/* Discussion Section Skeleton */}
+      <div className={sectionCardStyle}>
+        <div className={`h-5 w-28 rounded mb-4 ${skeletonBase}`} />
+        <div className={`h-40 w-full rounded-xl ${skeletonBase}`} />
+      </div>
+    </div>
+  );
+};
 
 const TaskDetails = () => {
   const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
@@ -22,6 +92,8 @@ const TaskDetails = () => {
   const { isDarkMode } = useTheme();
   const currentTaskId = routeTaskId || state?._id || state?.id || "";
   const sectionCardStyle = ` bg-white dark:bg-slate-900 rounded-2xl border border-gray-200/80 dark:border-slate-800 shadow-sm`;
+  
+  const [loading, setLoading] = useState(true);
   const [currentUserRole, setCurrentUserRole] = useState("projectmanager");
   const [workspaceMembers, setWorkspaceMembers] = useState([]); 
   const [isOpen, setIsOpen] = useState(false);
@@ -32,6 +104,7 @@ const TaskDetails = () => {
   const [validationErrors, setValidationErrors] = useState({});
   const [saveSuccess, setSaveSuccess] = useState("");
   const [saving, setSaving] = useState(false);
+
   const buildEqualAllocations = useCallback((assignees, size) => {
     const total = SIZE_POINTS[size] || 0;
     if (assignees.length === 1) return [{ member: assignees[0]?._id || assignees[0], workload: total }];
@@ -110,117 +183,126 @@ const TaskDetails = () => {
   }, []);
 
   useEffect(() => {
-  if (!currentTaskId) return;
-
-  let cancelled = false;
-
-  const syncTaskDetails = async () => {
-    const cachedData = taskDetailsCache.get(currentTaskId);
-
-    if (cachedData) {
-      setTask(cachedData.task);
-      setSubtasks(cachedData.subtasks);
-      setWorkspaceMembers(cachedData.workspaceMembers);
+    if (!currentTaskId) {
+      setLoading(false);
+      return;
     }
 
-    try {
-      const response = await getTaskById(currentTaskId);
-      const liveTask = response?.task || response;
+    let cancelled = false;
 
-      if (!liveTask || cancelled) return;
+    const syncTaskDetails = async () => {
+      const cachedData = taskDetailsCache.get(currentTaskId);
 
-      let resolvedAssignees = [];
-
-      if (Array.isArray(liveTask.assignedTo)) {
-        resolvedAssignees = liveTask.assignedTo.map((member) => {
-          if (typeof member === "object" && member !== null) {
-            return member;
-          }
-
-          return { _id: member };
-        });
-      } else if (liveTask.assignedTo) {
-        resolvedAssignees =
-          typeof liveTask.assignedTo === "object"
-            ? [liveTask.assignedTo]
-            : [{ _id: liveTask.assignedTo }];
+      if (cachedData) {
+        setTask(cachedData.task);
+        setSubtasks(cachedData.subtasks);
+        setWorkspaceMembers(cachedData.workspaceMembers);
+        setLoading(false);
+      } else {
+        setLoading(true);
       }
 
-      const targetProjectId =
-        liveTask.project?._id ||
-        liveTask.project ||
-        liveTask.projectId;
+      try {
+        const response = await getTaskById(currentTaskId);
+        const liveTask = response?.task || response;
 
-      const nextTask = {
-        id: liveTask._id || liveTask.id,
-        projectId: targetProjectId,
-        taskTitle: liveTask.taskTitle || liveTask.title || "Untitled Task",
-        description: liveTask.description || "",
-        status: liveTask.status || "Todo",
-        priority: liveTask.priority || "Medium",
-        size: liveTask.size || "M",
-        requiredSkills: liveTask.requiredSkills || [],
-        deadline: liveTask.deadline
-          ? liveTask.deadline.substring(0, 10)
-          : "",
-        assignees: resolvedAssignees,
-        allocationMode: liveTask.allocationMode || "manual",
-        assigneeWorkloads: Array.isArray(liveTask.assigneeWorkloads)
-          ? liveTask.assigneeWorkloads.map((item) => ({
-              member: item.member?._id || item.member,
-              workload: Number(item.workload) || 0,
-            }))
-          : buildEqualAllocations(
-              resolvedAssignees,
-              liveTask.size || "M"
-            ),
-      };
+        if (!liveTask || cancelled) return;
 
-      let nextWorkspaceMembers = [];
+        let resolvedAssignees = [];
 
-      if (targetProjectId) {
-        try {
-          const membersResponse = await getProjectMembers(targetProjectId);
-          nextWorkspaceMembers = membersResponse.members || [];
-        } catch (err) {
-          console.error("Error loading project members:", err);
+        if (Array.isArray(liveTask.assignedTo)) {
+          resolvedAssignees = liveTask.assignedTo.map((member) => {
+            if (typeof member === "object" && member !== null) {
+              return member;
+            }
+            return { _id: member };
+          });
+        } else if (liveTask.assignedTo) {
+          resolvedAssignees =
+            typeof liveTask.assignedTo === "object"
+              ? [liveTask.assignedTo]
+              : [{ _id: liveTask.assignedTo }];
+        }
 
-          if (cachedData?.workspaceMembers) {
-            nextWorkspaceMembers = cachedData.workspaceMembers;
+        const targetProjectId =
+          liveTask.project?._id ||
+          liveTask.project ||
+          liveTask.projectId;
+
+        const nextTask = {
+          id: liveTask._id || liveTask.id,
+          projectId: targetProjectId,
+          taskTitle: liveTask.taskTitle || liveTask.title || "Untitled Task",
+          description: liveTask.description || "",
+          status: liveTask.status || "Todo",
+          priority: liveTask.priority || "Medium",
+          size: liveTask.size || "M",
+          requiredSkills: liveTask.requiredSkills || [],
+          deadline: liveTask.deadline
+            ? liveTask.deadline.substring(0, 10)
+            : "",
+          assignees: resolvedAssignees,
+          allocationMode: liveTask.allocationMode || "manual",
+          assigneeWorkloads: Array.isArray(liveTask.assigneeWorkloads)
+            ? liveTask.assigneeWorkloads.map((item) => ({
+                member: item.member?._id || item.member,
+                workload: Number(item.workload) || 0,
+              }))
+            : buildEqualAllocations(
+                resolvedAssignees,
+                liveTask.size || "M"
+              ),
+        };
+
+        let nextWorkspaceMembers = [];
+
+        if (targetProjectId) {
+          try {
+            const membersResponse = await getProjectMembers(targetProjectId);
+            nextWorkspaceMembers = membersResponse.members || [];
+          } catch (err) {
+            console.error("Error loading project members:", err);
+
+            if (cachedData?.workspaceMembers) {
+              nextWorkspaceMembers = cachedData.workspaceMembers;
+            }
           }
         }
-      }
 
-      const nextSubtasks = liveTask.subtasks || [];
+        const nextSubtasks = liveTask.subtasks || [];
 
-      if (!cancelled) {
-        setTask(nextTask);
-        setSubtasks(nextSubtasks);
-        setWorkspaceMembers(nextWorkspaceMembers);
+        if (!cancelled) {
+          setTask(nextTask);
+          setSubtasks(nextSubtasks);
+          setWorkspaceMembers(nextWorkspaceMembers);
 
-        taskDetailsCache.set(currentTaskId, {
-          task: nextTask,
-          subtasks: nextSubtasks,
-          workspaceMembers: nextWorkspaceMembers,
-        });
-      }
-    } catch (error) {
-      if (!cancelled) {
-        console.error("Error loading task real-time details:", error);
+          taskDetailsCache.set(currentTaskId, {
+            task: nextTask,
+            subtasks: nextSubtasks,
+            workspaceMembers: nextWorkspaceMembers,
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Error loading task real-time details:", error);
 
-        if (!cachedData) {
-          setSubtasks([]);
+          if (!cachedData) {
+            setSubtasks([]);
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
         }
       }
-    }
-  };
+    };
 
-  syncTaskDetails();
+    syncTaskDetails();
 
-  return () => {
-    cancelled = true;
-  };
-}, [currentTaskId, buildEqualAllocations, liveTick]);
+    return () => {
+      cancelled = true;
+    };
+  }, [currentTaskId, buildEqualAllocations, liveTick]);
 
   const resetSubtaskForm = (closeForm = true) => {
     setSubtaskTitle("");
@@ -241,7 +323,6 @@ const TaskDetails = () => {
     ];
     if (keyboardPatterns.some((pattern) => compact.includes(pattern))) return true;
 
-    // Reject obvious repeated 2-3 character gibberish such as abababab or xzyxzyx.
     for (const size of [2, 3]) {
       if (compact.length >= size * 3 && compact.length % size === 0) {
         const part = compact.slice(0, size);
@@ -251,7 +332,6 @@ const TaskDetails = () => {
 
     const vowels = (compact.match(/[aeiou]/g) || []).length;
     const uniqueRatio = new Set(compact).size / compact.length;
-    // Very long strings with almost no vowels and very low character variety are
     if (compact.length >= 8 && vowels / compact.length < 0.16 && uniqueRatio < 0.55) return true;
     if (compact.length >= 10 && vowels / compact.length < 0.12) return true;
 
@@ -360,44 +440,41 @@ const TaskDetails = () => {
           assignedTo: subtaskAssignee,
         });
         const updated = response.subtask;
-       setSubtasks((prev) => {
-  const updatedSubtasks = prev.map((item) =>
-    (item.id || item._id) === editingSubtaskId ? updated : item
-  );
+        setSubtasks((prev) => {
+          const updatedSubtasks = prev.map((item) =>
+            (item.id || item._id) === editingSubtaskId ? updated : item
+          );
 
-  const cached = taskDetailsCache.get(currentTaskId);
+          const cached = taskDetailsCache.get(currentTaskId);
+          if (cached) {
+            taskDetailsCache.set(currentTaskId, {
+              ...cached,
+              subtasks: updatedSubtasks,
+            });
+          }
 
-  if (cached) {
-    taskDetailsCache.set(currentTaskId, {
-      ...cached,
-      subtasks: updatedSubtasks,
-    });
-  }
-
-  return updatedSubtasks;
-});
+          return updatedSubtasks;
+        });
       } else {
         const response = await createSubtask(task.id, {
           title: subtaskTitle.trim(),
           assignedTo: subtaskAssignee,
         });
         setSubtasks((prev) => {
-  const updatedSubtasks = [...prev, response.subtask];
+          const updatedSubtasks = [...prev, response.subtask];
 
-  const cached = taskDetailsCache.get(currentTaskId);
+          const cached = taskDetailsCache.get(currentTaskId);
+          if (cached) {
+            taskDetailsCache.set(currentTaskId, {
+              ...cached,
+              subtasks: updatedSubtasks,
+            });
+          }
 
-  if (cached) {
-    taskDetailsCache.set(currentTaskId, {
-      ...cached,
-      subtasks: updatedSubtasks,
-    });
-  }
-
-  return updatedSubtasks;
-});
+          return updatedSubtasks;
+        });
       }
       const successMessage = editingSubtaskId ? "Subtask updated successfully!" : "Subtask created successfully!";
-      // Keep the modal open so the success banner is shown
       resetSubtaskForm(false);
       setSubtaskSuccess(successMessage);
       window.setTimeout(() => {
@@ -412,73 +489,72 @@ const TaskDetails = () => {
   };
 
   const handleSubtaskToggle = async (subId) => {
-  const current = subtasks.find((s) => (s.id || s._id) === subId);
-  if (!current) return;
+    const current = subtasks.find((s) => (s.id || s._id) === subId);
+    if (!current) return;
 
-  try {
-    const response = await updateSubtask(task.id, subId, {
-      completed: !current.completed,
-    });
+    try {
+      const response = await updateSubtask(task.id, subId, {
+        completed: !current.completed,
+      });
 
-    setSubtasks((prev) => {
-      const updatedSubtasks = prev.map((item) =>
-        (item.id || item._id) === subId
-          ? { ...item, ...response.subtask }
-          : item
-      );
+      setSubtasks((prev) => {
+        const updatedSubtasks = prev.map((item) =>
+          (item.id || item._id) === subId
+            ? { ...item, ...response.subtask }
+            : item
+        );
 
-      const cached = taskDetailsCache.get(currentTaskId);
+        const cached = taskDetailsCache.get(currentTaskId);
+        if (cached) {
+          taskDetailsCache.set(currentTaskId, {
+            ...cached,
+            subtasks: updatedSubtasks,
+          });
+        }
 
-      if (cached) {
-        taskDetailsCache.set(currentTaskId, {
-          ...cached,
-          subtasks: updatedSubtasks,
-        });
-      }
-
-      return updatedSubtasks;
-    });
-  } catch (error) {
-    console.error("Error updating subtask:", error);
-  }
-};
+        return updatedSubtasks;
+      });
+    } catch (error) {
+      console.error("Error updating subtask:", error);
+    }
+  };
 
   const handleDeleteSubtask = async (subId) => {
-  if (currentUserRole !== "projectmanager") {
-    alert("Access Denied. Only Project Managers can delete subtasks.");
-    return;
-  }
+    if (currentUserRole !== "projectmanager") {
+      alert("Access Denied. Only Project Managers can delete subtasks.");
+      return;
+    }
 
-  const confirmed = window.confirm(
-    "Are you sure you want to delete this subtask?"
-  );
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this subtask?"
+    );
 
-  if (!confirmed) return;
+    if (!confirmed) return;
 
-  try {
-    await deleteSubtask(task.id, subId);
+    try {
+      await deleteSubtask(task.id, subId);
 
-    setSubtasks((prev) => {
-      const updatedSubtasks = prev.filter(
-        (item) => (item.id || item._id) !== subId
-      );
+      setSubtasks((prev) => {
+        const updatedSubtasks = prev.filter(
+          (item) => (item.id || item._id) !== subId
+        );
 
-      const cached = taskDetailsCache.get(currentTaskId);
+        const cached = taskDetailsCache.get(currentTaskId);
+        if (cached) {
+          taskDetailsCache.set(currentTaskId, {
+            ...cached,
+            subtasks: updatedSubtasks,
+          });
+        }
 
-      if (cached) {
-        taskDetailsCache.set(currentTaskId, {
-          ...cached,
-          subtasks: updatedSubtasks,
-        });
-      }
+        return updatedSubtasks;
+      });
+    } catch (error) {
+      console.error("Error deleting subtask:", error);
+    }
+  };
 
-      return updatedSubtasks;
-    });
-  } catch (error) {
-    console.error("Error deleting subtask:", error);
-  }
-};
-const handleMemberToggle = (member) => {
+  const handleMemberToggle = (member) => {
     setTask((prev) => {
       const memberId = String(member._id);
       const isAlreadySelected = prev.assignees.some(
@@ -539,6 +615,7 @@ const handleMemberToggle = (member) => {
   const validateTaskTitle = (value) => { const title=cleanInput(value).trim(); if(!title) return "Task Title is required."; if(title.length<3) return "Task Title must be at least 3 characters."; if(title.length>300) return "Task Title cannot exceed 300 characters."; if(/\d/.test(title)) return "Task Title cannot contain numbers."; return validateMeaningfulText(title,"Task Title",3); };
   const validateDescription = (value) => { const description=cleanInput(value).trim(); if(!description) return "Description is required."; if(description.length<8) return "Description must be at least 8 characters."; if(description.length>1000) return "Description cannot exceed 1000 characters."; if(description.trim().split(/\s+/).filter(Boolean).length<2) return "Description must contain at least 2 words."; return validateMeaningfulText(description,"Description",8); };
   const validateDeadline = (value) => { if(!value) return "Deadline is required."; if(!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "Deadline is invalid. Please select a valid date."; const [year,month,day]=value.split("-").map(Number); const date=new Date(Date.UTC(year,month-1,day)); if(date.getUTCFullYear()!==year||date.getUTCMonth()!==month-1||date.getUTCDate()!==day) return "Deadline is invalid. Please select a valid date."; const now=new Date(); const today=new Date(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate())); return date<today ? "Deadline cannot be a past date." : ""; };
+  
   const validateTaskEdit = () => {
     const next={};
     const titleError=validateTaskTitle(task.taskTitle); if(titleError) next.taskTitle=titleError;
@@ -578,6 +655,7 @@ const handleMemberToggle = (member) => {
 
     setValidationErrors(next); return Object.keys(next).length===0;
   };
+
   const clearFieldError = (field) => setValidationErrors(prev => ({...prev,[field]:"",form:""}));
 
   const handleSave = async () => {
@@ -640,6 +718,10 @@ const handleMemberToggle = (member) => {
     }
   };
 
+  if (loading) {
+    return <TaskDetailsSkeleton isDarkMode={isDarkMode} />;
+  }
+
   return (
     <div className="w-full p-4 sm:p-6 lg:p-8 space-y-6 bg-transparent min-h-screen font-sans text-gray-900 dark:text-white transition-colors duration-200">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -689,7 +771,7 @@ const handleMemberToggle = (member) => {
                 <span className="text-[14px] font-bold text-gray-600 dark:text-slate-500 mb-0">Subtasks</span>
                 <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">Manage and track task-level work items.</p>
               </div>
-              {currentUserRole === "Aprojectmanager" && (
+              {currentUserRole === "projectmanager" && (
                 <button
                   type="button"
                   onClick={openCreateSubtask}
@@ -820,4 +902,3 @@ const handleMemberToggle = (member) => {
 };
 
 export default TaskDetails;
-

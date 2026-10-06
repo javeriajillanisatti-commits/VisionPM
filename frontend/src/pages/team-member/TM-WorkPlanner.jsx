@@ -14,6 +14,36 @@ import PlannerSummary from "../../components/Planner/PlannerSummary";
 import ScheduleTaskModal from "../../components/Planner/ScheduleTaskModal";
 import { useTheme } from "../../context/ThemeContext";
 
+
+//  Skeleton loader 
+const Skeleton = ({ dark, className = "" }) => (
+  <div className={`${className} rounded-md ${dark ? "bg-slate-800" : "bg-gray-200"}`} />
+);
+
+const PlannerBodySkeleton = ({ isDarkMode }) => {
+  const card = `rounded-2xl border ${isDarkMode ? "bg-[#11182B] border-[#263149]" : "bg-white border-gray-200"}`;
+  return (
+    <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 animate-pulse">
+      {/* Unplanned tasks panel */}
+      <div className={`${card} p-5 space-y-4`}><Skeleton dark={isDarkMode} className="h-6 w-40 rounded-lg" />
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className={`rounded-xl border p-4 space-y-2 ${isDarkMode ? "border-[#263149]" : "border-gray-100"}`}>
+            <Skeleton dark={isDarkMode} className="h-4 w-3/4" />
+            <Skeleton dark={isDarkMode} className="h-3 w-1/2" /></div>))}
+      </div>
+      {/* Calendar */}
+      <div className={`${card} p-5 lg:col-span-2 space-y-3`}>
+        <Skeleton dark={isDarkMode} className="h-6 w-48 rounded-lg" />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4">
+            <Skeleton dark={isDarkMode} className="h-4 w-12 shrink-0" />
+            <Skeleton dark={isDarkMode} className="h-12 flex-1 rounded-xl" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 // Format date as YYYY-MM-DD
 const toDateString = date =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -221,15 +251,7 @@ const TMWorkPlanner = () => {
       />
 
       {loading ? (
-        <div
-          className={`w-full rounded-2xl border p-8 sm:p-10 text-center text-sm font-medium ${
-            isDarkMode
-              ? "bg-[#11182B] border-[#263149] text-gray-400"
-              : "bg-white border-gray-100 text-gray-400"
-          }`}
-        >
-          Loading planner...
-        </div>
+                <PlannerBodySkeleton isDarkMode={isDarkMode} />
       ) : (
         <div className="w-full min-w-0 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 items-stretch">
           <div className="min-w-0 w-full lg:h-full">

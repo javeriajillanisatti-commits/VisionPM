@@ -2,7 +2,7 @@ import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { useWorkspace } from "../../context/WorkspaceContext";
-import { Search, AlertTriangle, SlidersHorizontal, Layers, CircleDot, Timer, Gauge, X } from "lucide-react";
+import { Search, AlertTriangle, Layers, CircleDot, Timer, Gauge, X } from "lucide-react";
 import axios from "axios";
 import MembersTable from "../../components/project/MembersTable";
 const membersCache = new Map();
@@ -12,93 +12,93 @@ const Members = () => {
   const { isDarkMode } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
   const targetWorkspaceId = activeWorkspace?.id || activeWorkspace?._id;
-const cacheKey = targetWorkspaceId || "all";
-const cachedMembers = membersCache.get(cacheKey);
+  const cacheKey = targetWorkspaceId || "all";
+  const cachedMembers = membersCache.get(cacheKey);
 
-const [members, setMembers] = useState(cachedMembers || []);
-const [loading, setLoading] = useState(!cachedMembers);
+  const [members, setMembers] = useState(cachedMembers || []);
+  const [loading, setLoading] = useState(!cachedMembers);
   const [statusFilter, setStatusFilter] = useState("All");
 
- useEffect(() => {
-  if (!targetWorkspaceId) {
-    setLoading(false);
-    return;
-  }
-
-  let cancelled = false;
-
-  const fetchWorkspaceProjectMembers = async () => {
-    const token = sessionStorage.getItem("token");
-
-    if (!token || token === "null" || token === "undefined") {
+  useEffect(() => {
+    if (!targetWorkspaceId) {
       setLoading(false);
       return;
     }
 
-    const cachedData = membersCache.get(cacheKey);
+    let cancelled = false;
 
-    if (cachedData) {
-      setMembers(cachedData);
-      setLoading(false);
-    } else {
-      setLoading(true);
-    }
+    const fetchWorkspaceProjectMembers = async () => {
+      const token = sessionStorage.getItem("token");
 
-    try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/workspaces/${targetWorkspaceId}/members-projects`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      const freshMembers = Array.isArray(response.data)
-        ? response.data
-        : [];
-
-      if (!cancelled) {
-        setMembers(freshMembers);
-        membersCache.set(cacheKey, freshMembers);
+      if (!token || token === "null" || token === "undefined") {
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      if (!cancelled) {
-        console.error(
-          "Error loading project-based workspace members:",
-          err
+
+      const cachedData = membersCache.get(cacheKey);
+
+      if (cachedData) {
+        setMembers(cachedData);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+
+      try {
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_URL}/api/workspaces/${targetWorkspaceId}/members-projects`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
         );
 
-        if (!cachedData) {
-          setMembers([]);
+        const freshMembers = Array.isArray(response.data)
+          ? response.data
+          : [];
+
+        if (!cancelled) {
+          setMembers(freshMembers);
+          membersCache.set(cacheKey, freshMembers);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error(
+            "Error loading project-based workspace members:",
+            err
+          );
+
+          if (!cachedData) {
+            setMembers([]);
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
         }
       }
-    } finally {
-      if (!cancelled) {
-        setLoading(false);
+    };
+
+    fetchWorkspaceProjectMembers();
+
+    const handleFocus = () => fetchWorkspaceProjectMembers();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchWorkspaceProjectMembers();
       }
-    }
-  };
+    };
 
-  fetchWorkspaceProjectMembers();
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
-  const handleFocus = () => fetchWorkspaceProjectMembers();
-
-  const handleVisibilityChange = () => {
-    if (document.visibilityState === "visible") {
-      fetchWorkspaceProjectMembers();
-    }
-  };
-
-  window.addEventListener("focus", handleFocus);
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-
-  return () => {
-    cancelled = true;
-    window.removeEventListener("focus", handleFocus);
-    document.removeEventListener("visibilitychange", handleVisibilityChange);
-  };
-}, [targetWorkspaceId, cacheKey, liveTick]);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [targetWorkspaceId, cacheKey, liveTick]);
 
   const filteredMembers = members
     .filter((m) => {
@@ -141,14 +141,14 @@ const [loading, setLoading] = useState(!cachedMembers);
       <button
         key={tab.id}
         onClick={() => setStatusFilter(tab.id)}
-        className={`${mobile ? "flex-1 min-w-0" : ""} px-2.5 sm:px-3 py-1.5 sm:py-2 min-h-8 sm:h-9 rounded-xl text-[10px] sm:text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border shadow-sm whitespace-nowrap ${
+        className={`${mobile ? "flex-1 min-w-0" : ""} px-2.5 sm:px-3 py-1.5 sm:py-2 min-h-8 sm:h-9 rounded-xl text-[10px] sm:text-xs font-bold max-[300px]:px-1.5 max-[300px]:py-1 max-[300px]:text-[9px] max-[300px]:gap-1 transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border shadow-sm whitespace-nowrap ${
           isActive
             ? "bg-blue-600 border-blue-600 text-white shadow-blue-500/20"
             : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800/80 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
         }`}
       >
         {tab.icon}
-        <span>{tab.label}</span>
+        <span className="whitespace-nowrap max-[300px]:truncate">{tab.label}</span>
       </button>
     );
   };
@@ -161,66 +161,53 @@ const [loading, setLoading] = useState(!cachedMembers);
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex flex-col gap-0.5">
-            <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-              Workspace Team Members
-            </h1>
-            <p className={`mt-2 text-xs sm:text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
-              Monitor project allocation tracking, member capacity weights, and active utilization metrics.
-            </p>
+            <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}> Workspace Team Members</h1>
+            <p className={`mt-2 text-xs sm:text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>Monitor project allocation tracking, member capacity weights, and active utilization metrics. </p>
           </div>
         </div>
 
-        {/* Filter and Search Actions Bar */}
+        {/* Filter and search bar */}
         {!loading && members.length > 0 && (
           <div className="w-full pt-1 pb-1">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4 w-full">
               {/* Search */}
-              <div className="relative w-full sm:w-64 lg:w-72 h-10 shrink-0">
+              <div className="relative w-full lg:w-64 xl:w-72 2xl:w-80 h-10 shrink-0">
                 <Search
                   size={15}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none"
-                />
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none"/>
                 <input
                   type="text"
                   placeholder="Search members..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full h-10 pl-9 pr-9 rounded-xl border border-gray-200 dark:border-[#263149] bg-white dark:bg-[#11182B] text-sm text-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none transition-all focus:border-blue-500"
-                />
+                  className="w-full h-10 pl-9 pr-9 rounded-xl max-[300px]:h-9 max-[300px]:pl-8 max-[300px]:pr-8 border border-gray-200 dark:border-[#263149] bg-white dark:bg-[#11182B] text-sm text-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none transition-all focus:border-blue-500" />
                 {searchTerm && (
                   <button
                     type="button"
                     onClick={() => setSearchTerm("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                  >
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"  >
                     <X size={11} strokeWidth={2.5} />
                   </button>
                 )}
               </div>
 
               {/* Filters */}
-              <div className="w-full sm:w-auto min-w-0">
+              <div className="w-full lg:flex-1 lg:min-w-0">
                 {/* Mobile only: Filter + All + Available on first line; remaining 3 on next line */}
-                <div className="sm:hidden w-full space-y-1.5">
-                  <div className="flex items-center gap-1.5 w-full">
-                    <div className="flex items-center gap-1.5 px-0.5 text-[11px] font-bold text-slate-600 dark:text-slate-500 whitespace-nowrap shrink-0">
-                      <SlidersHorizontal size={13} className="text-slate-400" />
-                      <span>Filter:</span>
-                    </div>
+                <div className="sm:hidden w-full space-y-1.5 max-[300px]:space-y-1">
+                  <div className="flex items-center gap-1.5 w-full max-[300px]:gap-1">
+                    
                     {filterTabs.slice(0, 2).map((tab) => renderFilterButton(tab, true))}
                   </div>
-                  <div className="flex items-center gap-1.5 w-full">
+                  <div className="flex items-center gap-1.5 w-full max-[300px]:gap-1">
                     {filterTabs.slice(2).map((tab) => renderFilterButton(tab, true))}
                   </div>
                 </div>
 
                 {/* Desktop/tablet: existing single-row filter layout */}
-                <div className="hidden sm:flex flex-wrap items-center justify-start sm:justify-end gap-1.5 sm:gap-2">
-                  <div className="flex items-center gap-1.5 px-0.5 text-[11px] sm:text-[12px] font-bold text-slate-600 dark:text-slate-500 whitespace-nowrap shrink-0">
-                    <SlidersHorizontal size={13} className="text-slate-400" />
-                    <span>Filter:</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
+                <div className="hidden sm:flex flex-wrap lg:flex-nowrap items-center lg:justify-end gap-1.5 sm:gap-2 w-full">
+                  
+                  <div className="flex flex-wrap lg:flex-nowrap items-center lg:justify-end gap-1.5 sm:gap-2 min-w-0 lg:flex-1">
                     {filterTabs.map((tab) => renderFilterButton(tab))}
                   </div>
                 </div>
@@ -233,15 +220,75 @@ const [loading, setLoading] = useState(!cachedMembers);
         <div className="w-full overflow-x-auto scrollbar-none">
           <div className="min-w-full inline-block align-middle">
             {loading ? (
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm p-24 text-center text-gray-400 dark:text-slate-500 font-medium text-sm animate-pulse">
-                Retrieving dynamic workspace members metadata...
+              <div className={`rounded-xl border shadow-sm overflow-hidden animate-pulse ${
+                isDarkMode
+                  ? "bg-slate-900 border-slate-800"
+                  : "bg-white border-gray-200"}`}>
+                {/* Table header skeleton */}
+                <div className={`grid grid-cols-5 gap-4 px-5 py-4 border-b ${
+                  isDarkMode ? "border-slate-800" : "border-gray-200" }`}>
+                  {[1, 2, 3, 4, 5].map((item) => (
+                    <div
+                      key={item}
+                      className={`h-3 rounded-md ${isDarkMode ? "bg-slate-700" : "bg-gray-200"}`}  />
+                  ))}
+                </div>
+
+                {/* Table rows skeleton */}
+                <div>
+                  {[1, 2, 3, 4, 5, 6].map((row) => (
+                    <div
+                      key={row}
+                      className={`grid grid-cols-5 gap-4 items-center px-5 py-5 border-b last:border-b-0 ${
+                        isDarkMode ? "border-slate-800" : "border-gray-100" }`} >
+                      {/* Member */}
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full shrink-0 ${
+                          isDarkMode ? "bg-slate-700" : "bg-gray-200"
+                        }`} />
+                        <div className="space-y-2 min-w-0 flex-1">
+                          <div className={`h-3.5 w-28 rounded ${
+                            isDarkMode ? "bg-slate-700" : "bg-gray-200"
+                          }`} />
+                          <div className={`h-2.5 w-20 rounded ${
+                            isDarkMode ? "bg-slate-800" : "bg-gray-100"
+                          }`} />
+                        </div>
+                      </div>
+
+                      {/* Role */}
+                      <div className={`h-3.5 w-20 rounded ${
+                        isDarkMode ? "bg-slate-700" : "bg-gray-200"
+                      }`} />
+
+                      {/* Projects */}
+                      <div className={`h-3.5 w-16 rounded ${
+                        isDarkMode ? "bg-slate-700" : "bg-gray-200"
+                      }`} />
+
+                      {/* Workload */}
+                      <div className="space-y-2">
+                        <div className={`h-2.5 w-full max-w-[120px] rounded-full ${
+                          isDarkMode ? "bg-slate-700" : "bg-gray-200"
+                        }`} />
+                        <div className={`h-2.5 w-10 rounded ${
+                          isDarkMode ? "bg-slate-800" : "bg-gray-100"
+                        }`} />
+                      </div>
+
+                      {/* Status */}
+                      <div className={`h-7 w-20 rounded-full ${
+                        isDarkMode ? "bg-slate-700" : "bg-gray-200"
+                      }`} />
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <MembersTable
                 filteredMembers={filteredMembers}
                 getInitials={getInitials}
-                getWorkloadColor={getWorkloadColor}
-              />
+                getWorkloadColor={getWorkloadColor} />
             )}
           </div>
         </div>

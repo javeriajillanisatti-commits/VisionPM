@@ -18,6 +18,50 @@ import { getProjectById } from "../../services/projectService";
 import { useTheme } from "../../context/ThemeContext";
 import ProjectDiscussion from "../../components/project/ProjectDiscussion";
 
+
+// Skeleton loader 
+const Skeleton = ({ dark, className = "" }) => (
+  <div className={`${className} rounded-md ${dark ? "bg-slate-800" : "bg-gray-200"}`} />
+);
+
+const TasksPageSkeleton = ({ isDarkMode }) => (
+  <div className={`w-full min-h-screen pt-4 px-4 sm:px-6 lg:px-10 pb-10 overflow-x-hidden animate-pulse ${isDarkMode ? "bg-[#05091D]" : "bg-gray-50/50"}`}>
+    {/* Header */}
+    <div className="flex items-start gap-4 mb-2">
+      <Skeleton dark={isDarkMode} className="mt-1 w-12 h-12 rounded-2xl shrink-0" />
+      <div className="flex-1 space-y-2">
+        <Skeleton dark={isDarkMode} className="h-9 w-72 rounded-lg" />
+        <Skeleton dark={isDarkMode} className="h-4 w-full max-w-2xl" />
+      </div>
+    </div>
+
+    {/* Search + sort + discussion button */}
+    <div className="mt-6 mb-4 flex flex-col xl:flex-row xl:justify-between gap-3">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Skeleton dark={isDarkMode} className="h-11 w-full sm:w-[320px] xl:w-[380px] rounded-xl" />
+        <Skeleton dark={isDarkMode} className="h-11 w-full sm:w-44 rounded-xl" />
+      </div>
+      <Skeleton dark={isDarkMode} className="h-11 w-full xl:w-44 rounded-xl" />
+    </div>
+    <div className="mb-7 flex gap-2 overflow-hidden">{Array.from({ length: 4 }).map((_, i) => (<Skeleton key={i} dark={isDarkMode} className="h-9 w-24 rounded-xl shrink-0" />))}</div>
+
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className={`rounded-2xl border p-5 space-y-3 ${isDarkMode ? "bg-[#11182B] border-[#263149]" : "bg-white border-gray-200"}`}>
+          <div className="flex items-start justify-between gap-3">
+            <Skeleton dark={isDarkMode} className="h-5 w-3/5" />
+            <Skeleton dark={isDarkMode} className="h-6 w-16 rounded-full" /></div>
+          <Skeleton dark={isDarkMode} className="h-4 w-full" />
+          <Skeleton dark={isDarkMode} className="h-4 w-4/5" />
+          <div className="flex items-center justify-between pt-2">
+            <Skeleton dark={isDarkMode} className="h-6 w-24 rounded-full" />
+            <Skeleton dark={isDarkMode} className="h-4 w-20" />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
 const TASKS_PER_LOAD = 9;
 const DESCRIPTION_LIMIT = 100;
 const tmTasksProjectCache = new Map();
@@ -362,14 +406,8 @@ useEffect(() => {
   ];
 
   if (loading) {
-    return (
-      <div className={`w-full min-h-screen flex items-center justify-center ${isDarkMode ? "bg-[#05091D] text-gray-300" : "bg-gray-50 text-gray-900"
-        }`}>
-        Loading tasks...
-      </div>
-    );
+    return <TasksPageSkeleton isDarkMode={isDarkMode} />;
   }
-
   return (
     <div className={`w-full min-h-screen pt-4 px-4 sm:px-6 lg:px-10 pb-10 overflow-x-hidden transition-colors duration-300 ${isDarkMode ? "bg-[#05091D] text-white" : "bg-gray-50/50 text-gray-900"
       }`}>

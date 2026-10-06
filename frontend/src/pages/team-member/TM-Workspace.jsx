@@ -1,4 +1,4 @@
-import { useLiveTick } from "../../hooks/useLiveRefresh";
+  import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useMemo, useState } from "react";
 import WorkspaceCard from "../../components/cards/WorkspaceCard";
 import { getMyWorkspace, getMyProjects, getMyTasks } from "../../services/memberService";
@@ -6,6 +6,22 @@ import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { AlertCircle, User } from "lucide-react";
 const memberWorkspaceCache = new Map();
+// Skeleton loader
+const Skeleton = ({ dark, className = "" }) => (
+  <div className={`${className} rounded-md ${dark ? "bg-slate-800" : "bg-gray-200"}`} />
+);
+
+const WorkspacePageSkeleton = ({ isDarkMode }) => (
+  <div className={`w-full min-h-screen pt-4 px-4 sm:px-6 lg:px-10 pb-10 overflow-x-hidden animate-pulse ${isDarkMode ? "bg-[#05091D]" : "bg-gray-50/50"}`}>
+    <div className="space-y-2 mb-2"><Skeleton dark={isDarkMode} className="h-9 w-56 rounded-lg" /><Skeleton dark={isDarkMode} className="h-4 w-full max-w-2xl" /><Skeleton dark={isDarkMode} className="h-4 w-80" /></div>
+    <div className="mt-5 mb-5 flex justify-end gap-6">{Array.from({ length: 3 }).map((_, i) => (<Skeleton key={i} dark={isDarkMode} className="h-6 w-20" />))}</div>
+    <div className={`rounded-2xl border p-5 flex items-center gap-4 ${isDarkMode ? "bg-[#11182B] border-[#263149]" : "bg-white border-gray-200"}`}>
+      <Skeleton dark={isDarkMode} className="w-12 h-12 rounded-xl shrink-0" />
+      <div className="flex-1 space-y-2"><Skeleton dark={isDarkMode} className="h-5 w-48" /><Skeleton dark={isDarkMode} className="h-4 w-3/4" /></div>
+      <Skeleton dark={isDarkMode} className="h-8 w-24 rounded-lg hidden sm:block" />
+    </div>
+  </div>
+);
 const MemberWorkspace = () => {
   const liveTick = useLiveTick({ resources: ["workspaces", "projects", "tasks"] });
   const { isDarkMode } = useTheme();
@@ -154,12 +170,8 @@ useEffect(() => {
       ? `${descriptionText.slice(0, 160).trim()}...`
       : descriptionText;
 
-  if (loading) {
-    return (
-      <div className={`w-full min-h-screen flex items-center justify-center ${isDarkMode ? "bg-[#05091D] text-gray-300" : "bg-gray-50 text-gray-900"}`}>
-        Loading workspace...
-      </div>
-    );
+   if (loading) {
+    return <WorkspacePageSkeleton isDarkMode={isDarkMode} />;
   }
 
   return (

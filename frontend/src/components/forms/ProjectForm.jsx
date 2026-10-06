@@ -202,7 +202,6 @@ const ProjectForm = ({
   onSubmit, 
   initialData, 
   isEdit, 
-  hideCompletedStatus = false,
 }) => { 
   const [formData, setFormData] = useState({ 
     projectName: "", 
@@ -401,13 +400,15 @@ const ProjectForm = ({
     const descriptionError = validateDescription(description);
     if (descriptionError) newErrors.description = descriptionError;
 
-    const allowedStatuses = (initialData || isEdit)
+    const editing = Boolean(initialData || isEdit);
+    const allowedStatuses = editing
       ? ["Planning", "In Progress", "On Hold", "Completed", "Cancelled"]
-      : ["Planning", "In Progress", "On Hold"];
+      : ["Planning"];
+
     if (!allowedStatuses.includes(formData.status)) {
-      newErrors.status = (initialData || isEdit)
+      newErrors.status = editing
         ? "Please select a valid project status."
-        : "New projects can only use Planning, In Progress, or On Hold.";
+        : "New projects can only use Planning status.";
     }
 
     const isValidDateInput = (value) => {
@@ -622,8 +623,8 @@ const ProjectForm = ({
           {isStatusOpen && (
             <div className="absolute left-0 right-0 top-full mt-1 z-[110] w-full max-w-full overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg py-1">
               {(initialData || isEdit
-                ? ["Planning", "In Progress", "On Hold", ...(!hideCompletedStatus ? ["Completed"] : []), "Cancelled"]
-                : ["Planning", "In Progress", "On Hold"]
+                ? ["On Hold", "Cancelled"]
+                : ["Planning"]
               ).map((option) => (
                 <button
                   key={option}

@@ -9,6 +9,54 @@ import TaskBreakdownTable from "../../components/cards/report/TaskBreakdownTable
 import { useTheme } from "../../context/ThemeContext";
 import StatsCard from "../../components/cards/StatsCard";
 
+
+// Skeleton loader 
+const Skeleton = ({ dark, className = "" }) => (
+  <div className={`${className} rounded-md ${dark ? "bg-slate-800" : "bg-gray-200"}`} />
+);
+
+const ReportPageSkeleton = ({ isDarkMode }) => {
+  const card = `rounded-2xl border ${isDarkMode ? "bg-[#11182B] border-[#263149]" : "bg-white border-gray-200"}`;
+  return (
+    <div className={`w-full min-h-screen pt-3 pb-10 px-3 min-[430px]:px-4 sm:px-6 lg:px-10 space-y-6 animate-pulse ${isDarkMode ? "bg-[#05091D]" : "bg-gray-50/50"}`}>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <Skeleton dark={isDarkMode} className="h-9 w-64 rounded-lg" />
+        <Skeleton dark={isDarkMode} className="h-11 w-full sm:w-40 rounded-xl" />
+      </div>
+
+      {/* Filters */}
+      <div className={`${card} p-4 flex flex-col lg:flex-row gap-5`}>
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="flex-1 space-y-2">
+            <Skeleton dark={isDarkMode} className="h-4 w-32" />
+            <Skeleton dark={isDarkMode} className="h-10 w-full sm:max-w-xs rounded-xl" /></div>
+        ))}
+      </div>
+      {/* Stats cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className={`${card} p-5 flex items-center justify-between`}>
+            <div className="space-y-2">
+              <Skeleton dark={isDarkMode} className="h-4 w-24" />
+              <Skeleton dark={isDarkMode} className="h-8 w-12 rounded-lg" />
+            </div>
+            <Skeleton dark={isDarkMode} className="w-11 h-11 rounded-xl" />
+          </div>
+        ))}
+      </div>
+      {/* Task breakdown table */}
+      <div className="space-y-4 pt-2"><Skeleton dark={isDarkMode} className="h-6 w-40 rounded-lg" />
+        <div className={`${card} p-5 space-y-3`}>{Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="grid grid-cols-4 gap-4 items-center">
+              <Skeleton dark={isDarkMode} className="h-4 w-full" />
+              <Skeleton dark={isDarkMode} className="h-4 w-3/4" />
+              <Skeleton dark={isDarkMode} className="h-6 w-20 rounded-full" />
+              <Skeleton dark={isDarkMode} className="h-4 w-16" /></div>))}
+        </div>
+      </div>
+    </div>
+  );
+};
 const CustomDropdown = ({ value, onChange, options, isDarkMode }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -203,14 +251,9 @@ useEffect(() => {
     doc.save(`My_Performance_Report_${fileName}.pdf`);
   };
 
-  if (loading) {
-    return (
-      <div className={`p-10 text-center ${isDarkMode ? "bg-[#05091D] text-gray-300" : "text-gray-900"}`}>
-        Loading report...
-      </div>
-    );
+    if(loading){
+    return <ReportPageSkeleton isDarkMode={isDarkMode}/>;
   }
-
   return (
     <div className={`w-full min-h-screen pt-3 pb-10 px-3 min-[430px]:px-4 sm:px-6 lg:px-10 space-y-6 animate-in fade-in duration-500 transition-colors ${isDarkMode ? "bg-[#05091D] text-white" : "bg-gray-50/50 text-gray-900"}`}>
       {/* Page Header */}

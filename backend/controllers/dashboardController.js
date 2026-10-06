@@ -82,18 +82,10 @@ const getDashboardStats = async (req, res) => {
       const inProgressPTasks = pCounts.inProgress;
 
       // Calculate project progress from project status
-      const projectStatus = p.status?.toString().trim().toLowerCase();
-      let progressPercent = 0;
-
-      if (projectStatus === "planning") {
-        progressPercent = 0;
-      } else if (projectStatus === "in progress" || projectStatus === "in-progress") {
-        progressPercent = 50;
-      } else if (projectStatus === "completed") {
-        progressPercent = 100;
-      } else {
-        progressPercent = totalPTasks > 0 ? Math.round((completedPTasks / totalPTasks) * 100) : 0;
-      }
+      const progressPercent =
+        totalPTasks > 0
+    ? Math.round((completedPTasks / totalPTasks) * 100)
+    : 0;
 
       const projTitle = p.projectName || p.title || "Untitled Project";
 

@@ -36,6 +36,59 @@ const EmptyState = ({ icon: Icon, title, text }) => (
   </div>
 );
 
+const TasksSkeleton = ({ isDarkMode }) => {
+  const skeletonBase = isDarkMode ? "bg-slate-800/60" : "bg-gray-200";
+
+  return (
+    <div className="w-full flex flex-col mt-3 pt-0 px-3 sm:px-4 md:px-6 pb-4 sm:pb-6 max-w-7xl mx-auto space-y-6 animate-pulse">
+      {/* Header Skeleton */}
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex items-start gap-3 w-full sm:w-2/3">
+          <div className={`w-10 h-10 rounded-lg shrink-0 ${skeletonBase}`} />
+          <div className="flex-1 space-y-2">
+            <div className={`h-8 w-1/2 rounded-md ${skeletonBase}`} />
+            <div className={`h-4 w-3/4 rounded-md ${skeletonBase}`} />
+          </div>
+        </div>
+        <div className={`h-10 w-full sm:w-44 rounded-xl shrink-0 ${skeletonBase}`} />
+      </div>
+
+      {/* Filters & Controls Skeleton */}
+      <div className="space-y-4 pt-2">
+        <div className="flex flex-wrap gap-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className={`h-9 w-24 rounded-xl ${skeletonBase}`} />
+          ))}
+        </div>
+        <div className={`h-11 w-full rounded-xl ${skeletonBase}`} />
+      </div>
+
+      {/* Task Cards Skeleton */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 pt-2">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div
+            key={i}
+            className={`h-48 rounded-2xl border p-5 space-y-4 ${
+              isDarkMode ? "border-slate-800 bg-[#11182B]/60" : "border-gray-100 bg-white"
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <div className={`h-5 w-24 rounded ${skeletonBase}`} />
+              <div className={`h-5 w-16 rounded-full ${skeletonBase}`} />
+            </div>
+            <div className={`h-6 w-3/4 rounded ${skeletonBase}`} />
+            <div className={`h-4 w-1/2 rounded ${skeletonBase}`} />
+            <div className="flex justify-between items-center pt-2">
+              <div className={`h-8 w-8 rounded-full ${skeletonBase}`} />
+              <div className={`h-4 w-20 rounded ${skeletonBase}`} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const Tasks = () => {
   const { projectId } = useParams();
   const { isDarkMode } = useTheme();
@@ -44,6 +97,7 @@ const Tasks = () => {
   const [projectInfo, setProjectInfo] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("All Tasks");
   const [viewMode, setViewMode] = useState("grid");
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,6 +139,8 @@ const Tasks = () => {
       setVisibleCount(6);
     } catch (error) {
       console.error("Error fetching tasks pipeline elements:", error);
+    } finally {
+      setLoading(false);
     }
   }, [projectId, applyProject, applyTasks]);
 
@@ -96,33 +152,13 @@ const Tasks = () => {
     if (cachedData) {
       applyProject(cachedData.project);
       applyTasks(cachedData.tasks);
+      setLoading(false);
       return;
     }
 
-    const loadTasks = async () => {
-      try {
-        const [projectResponse, taskResponse] = await Promise.all([
-          getProjectById(projectId),
-          getTasksByProject(projectId),
-        ]);
-
-        const projectData = projectResponse?.project || projectResponse;
-        const taskData = taskResponse?.tasks || (Array.isArray(taskResponse) ? taskResponse : []);
-
-        tasksCache.set(projectId, {
-          project: projectData,
-          tasks: taskData,
-        });
-
-        applyProject(projectResponse);
-        applyTasks(taskResponse);
-      } catch (error) {
-        console.error("Error fetching tasks pipeline elements:", error);
-      }
-    };
-
-    loadTasks();
-  }, [projectId, applyProject, applyTasks]);
+    setLoading(true);
+    fetchProjectMetaAndTasks();
+  }, [projectId, applyProject, applyTasks, fetchProjectMetaAndTasks]);
 
   useEffect(() => {
     const refresh = async () => {
@@ -343,7 +379,12 @@ const Tasks = () => {
     />
   );
 
-  const btnCancel = "w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-all active:scale-95";
+  const btnCancel =
+    "w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-all active:scale-95";
+
+  if (loading) {
+    return <TasksSkeleton isDarkMode={isDarkMode} />;
+  }
 
   return (
     <>
@@ -389,10 +430,11 @@ const Tasks = () => {
               </div>
             </div>
 
+            {/* Laptop / Large screens desktop structure strictly preserved */}
             <div className="shrink-0 w-full sm:w-auto lg:absolute lg:right-0 lg:top-10">
               <div className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-44 rounded-lg">
-                 <PrimaryButton text="+ Create Task" onClick={() => setShowModal(true)} />
-                 </div>
+                <PrimaryButton text="+ Create Task" onClick={() => setShowModal(true)} />
+              </div>
 
               <div className="hidden lg:block w-44 mt-3 [&>button]:w-full [&>button]:justify-center">
                 {discussion}
@@ -401,6 +443,7 @@ const Tasks = () => {
           </div>
 
           <div className="w-full flex flex-col gap-2 shrink-0 pt-0 sm:pt-2 lg:pt-5">
+            {/* Mobile View (< 640px) */}
             <div className="sm:hidden w-full grid grid-cols-2 gap-2">
               <div className="min-w-0 [&>*]:w-full [&_select]:w-full [&_select]:h-10">{filters}</div>
               <div className="min-w-0 [&>button]:w-full [&>button]:h-10 [&>button]:justify-center [&>button_svg]:hidden">
@@ -409,13 +452,15 @@ const Tasks = () => {
               <div className="col-span-2 min-w-0">{controls}</div>
             </div>
 
-            <div className="hidden sm:block min-w-0 pt-2 pb-2 max-w-full overflow-x-auto custom-scrollbar scrollbar-thin">
+            {/* Tablet View (600px - 900px) & Desktop */}
+            <div className="hidden sm:block min-w-0 pt-1 pb-1 max-w-full overflow-x-auto custom-scrollbar scrollbar-thin">
               {filters}
             </div>
 
             <div className="hidden sm:block w-full min-w-0">{controls}</div>
 
-            <div className="hidden sm:block lg:hidden">{discussion}</div>
+            {/* Discussion Button for Tablet View (sm to lg) */}
+            <div className="hidden sm:block lg:hidden mt-1">{discussion}</div>
           </div>
         </div>
 
@@ -469,7 +514,7 @@ const Tasks = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="relative z-50 w-full max-w-lg max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)] overflow-y-auto">
             <TaskForm onClose={() => setShowModal(false)} onSubmit={handleAddTask} />
           </div>
@@ -477,7 +522,7 @@ const Tasks = () => {
       )}
 
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
           <div
             role="dialog"
             aria-modal="true"

@@ -1,9 +1,30 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import AttachmentButton from "../buttons/AttachmentButton";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
+const getDeleteMenuPosition = (triggerRect, panelRect) => {
+  const bounds = {
+    left: Math.max(8, panelRect.left),
+    right: Math.min(window.innerWidth - 8, panelRect.right),
+    top: Math.max(8, panelRect.top),
+    bottom: Math.min(window.innerHeight - 8, panelRect.bottom),
+  };
+  const width = Math.min(192, bounds.right - bounds.left - 16);
+  const height = Math.min(88, bounds.bottom - bounds.top - 16);
+  const left = Math.max(bounds.left + 8, Math.min(triggerRect.right - width, bounds.right - width - 8));
+  const below = bounds.bottom - triggerRect.bottom - 8;
+  const above = triggerRect.top - bounds.top - 8;
+  const top = below >= height
+    ? triggerRect.bottom + 4
+    : above >= height + 4
+      ? triggerRect.top - height - 4
+      : Math.max(bounds.top + 8, Math.min(triggerRect.bottom + 4, bounds.bottom - height - 8));
+  return { top, left, width, maxHeight: height };
+};
 
 const decodeUserId = token => {
   try {
@@ -25,11 +46,56 @@ const UploadFile = ({ userRole = "projectmanager" }) => {
   const [attachments, setAttachments] = useState([]);
   const [showUploadUI, setShowUploadUI] = useState(false);
   const [openDeleteMenu, setOpenDeleteMenu] = useState(null);
+  const [deleteMenuPosition, setDeleteMenuPosition] = useState(null);
   const uploadInputRef = useRef(null);
+  const panelRef = useRef(null);
+  const deleteMenuButtonRef = useRef(null);
 
   const cleanRole = userRole.toString().toLowerCase().replace(/\s+/g, "");
   const isPM = cleanRole === "projectmanager";
   const currentUserId = decodeUserId(sessionStorage.getItem("token"));
+
+  useEffect(() => {
+    const closeMenu = event => {
+      if (!event.target.closest("[data-file-menu]")) {
+        setOpenDeleteMenu(null);
+        setDeleteMenuPosition(null);
+      }
+    };
+    document.addEventListener("mousedown", closeMenu);
+    return () => document.removeEventListener("mousedown", closeMenu);
+  }, []);
+
+  useEffect(() => {
+    if (!openDeleteMenu || !deleteMenuButtonRef.current || !panelRef.current) return undefined;
+    const reposition = () => {
+      setDeleteMenuPosition(getDeleteMenuPosition(
+        deleteMenuButtonRef.current.getBoundingClientRect(),
+        panelRef.current.getBoundingClientRect()
+      ));
+    };
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    return () => {
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+    };
+  }, [openDeleteMenu]);
+
+  const toggleDeleteMenu = (event, fileId) => {
+    event.stopPropagation();
+    if (openDeleteMenu === fileId) {
+      setOpenDeleteMenu(null);
+      setDeleteMenuPosition(null);
+      return;
+    }
+    deleteMenuButtonRef.current = event.currentTarget;
+    setDeleteMenuPosition(getDeleteMenuPosition(
+      event.currentTarget.getBoundingClientRect(),
+      panelRef.current.getBoundingClientRect()
+    ));
+    setOpenDeleteMenu(fileId);
+  };
 
 // Sync task files
 useEffect(() => {
@@ -201,11 +267,13 @@ useEffect(() => {
       }
 
       setOpenDeleteMenu(null);
+      setDeleteMenuPosition(null);
       console.log(data?.message || "File action completed successfully.");
     } catch (error) {
       console.error("Error deleting task attachment:", error);
       alert(error.response?.data?.message || "Unable to delete file.");
       setOpenDeleteMenu(null);
+      setDeleteMenuPosition(null);
     }
   };
 
@@ -219,7 +287,7 @@ useEffect(() => {
   );
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 sm:p-10 border border-gray-200/60 dark:border-slate-800 shadow-xl shadow-gray-200/20 dark:shadow-none space-y-6 transition-colors duration-200">
+    <div ref={panelRef} className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 sm:p-10 border border-gray-200/60 dark:border-slate-800 shadow-xl shadow-gray-200/20 dark:shadow-none space-y-6 transition-colors duration-200">
       {/* Header */}
       <div className="flex justify-between items-center">
         {!showUploadUI && (
@@ -340,9 +408,8 @@ useEffect(() => {
               <div className="relative shrink-0 ml-2">
                 <button
                   type="button"
-                  onClick={() =>
-                    setOpenDeleteMenu(openDeleteMenu === fileId ? null : fileId)
-                  }
+                  data-file-menu
+                  onClick={event => toggleDeleteMenu(event, fileId)}
                   className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 dark:hover:bg-slate-700 dark:hover:text-slate-200 rounded-lg transition-all cursor-pointer"
                   title="File actions"
                 >
@@ -360,8 +427,8 @@ useEffect(() => {
                   </svg>
                 </button>
 
-                {openDeleteMenu === fileId && (
-                  <div className="absolute right-0 top-9 z-30 w-48 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden">
+                {openDeleteMenu === fileId && deleteMenuPosition && createPortal(
+                  <div data-file-menu className="fixed z-[99999] bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl overflow-y-auto" style={deleteMenuPosition}>
                     {/* Delete for me */}
                     <button
                       type="button"
@@ -383,7 +450,8 @@ useEffect(() => {
                         Delete for everyone
                       </button>
                     )}
-                  </div>
+                  </div>,
+                  document.body
                 )}
               </div>
             </div>

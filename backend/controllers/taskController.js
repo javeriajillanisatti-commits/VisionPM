@@ -19,9 +19,13 @@ const syncProjectStatusAfterTaskChange = async projectId => {
 
   if (!project || !tasks.length) return;
 
+  const hasInProgressTask = tasks.some(task => task.status === "In Progress");
   const allCompleted = tasks.every(task => task.status === "Completed");
 
-  if (allCompleted && project.status !== "Completed") {
+  if (hasInProgressTask && project.status !== "In Progress") {
+    project.status = "In Progress";
+    await project.save();
+  } else if (allCompleted && project.status !== "Completed") {
     project.status = "Completed";
     await project.save();
   } else if (!allCompleted && project.status === "Completed") {

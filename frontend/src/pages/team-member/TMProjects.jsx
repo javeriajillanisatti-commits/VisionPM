@@ -17,6 +17,41 @@ import { getMyProjects } from "../../services/memberService";
 import ProjectCard from "../../components/cards/ProjectCard";
 import { useTheme } from "../../context/ThemeContext";
 const tmProjectsCache = new Map();
+
+// Skeleton loader 
+const Skeleton = ({ dark, className = "" }) => (
+  <div className={`${className} rounded-md ${dark ? "bg-slate-800" : "bg-gray-200"}`} />
+);
+
+const ProjectsPageSkeleton = ({ isDarkMode }) => (
+  <div className={`w-full min-h-screen pt-4 px-4 sm:px-6 lg:px-10 pb-10 overflow-x-hidden animate-pulse ${isDarkMode ? "bg-[#05091D]" : "bg-gray-50/50"}`}>
+    <div className="flex items-start gap-4 mb-2">
+      <Skeleton dark={isDarkMode} className="mt-1 w-12 h-12 rounded-2xl shrink-0" />
+      <div className="flex-1 space-y-2">
+        <Skeleton dark={isDarkMode} className="h-9 w-64 rounded-lg" />
+        <Skeleton dark={isDarkMode} className="h-4 w-full max-w-xl" />
+      </div>
+    </div>
+    <div className="mt-5 mb-7 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Skeleton dark={isDarkMode} className="h-11 w-full sm:w-[24rem] rounded-xl" />
+        <Skeleton dark={isDarkMode} className="h-11 w-full sm:w-44 rounded-xl" /></div>
+      <Skeleton dark={isDarkMode} className="h-11 w-24 rounded-xl" /></div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className={`rounded-2xl border p-5 space-y-4 ${isDarkMode ? "bg-[#11182B] border-[#263149]" : "bg-white border-gray-200"}`}>
+          <div className="flex items-center justify-between"><Skeleton dark={isDarkMode} className="h-6 w-40 rounded-lg" /><Skeleton dark={isDarkMode} className="h-6 w-16 rounded-full" />
+          </div>
+          <Skeleton dark={isDarkMode} className="h-4 w-full" />
+          <Skeleton dark={isDarkMode} className="h-4 w-2/3" />
+          <Skeleton dark={isDarkMode} className="h-2 w-full rounded-full" />
+          <div className="flex items-center justify-between pt-1"><Skeleton dark={isDarkMode} className="h-4 w-24" /><Skeleton dark={isDarkMode} className="h-4 w-16" />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
 const SORT_OPTIONS = [
   { value: "", label: "Sort By" },
   { value: "date-newest", label: "Newest First" },
@@ -259,17 +294,8 @@ const [loading, setLoading] = useState(!cachedProjects);
 
   const pageNumbers = getPageNumbers();
 
-  if (loading) {
-    return (
-      <div
-        className={`min-h-screen p-10 text-center ${isDarkMode
-          ? "bg-[#05091D] text-gray-300"
-          : "bg-gray-50 text-gray-900"
-          }`}
-      >
-        Loading projects...
-      </div>
-    );
+   if (loading) {
+    return <ProjectsPageSkeleton isDarkMode={isDarkMode} />;
   }
 
   return (
@@ -456,12 +482,9 @@ const [loading, setLoading] = useState(!cachedProjects);
             </h3>
 
             <p
-              className={`text-sm mt-1 ${isDarkMode ? "text-gray-500" : "text-gray-400"
-                }`}
+              className={`text-sm mt-1 ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}
             >
-              {searchTerm
-                ? "No projects match your search."
-                : "No projects found in this workspace."}
+              {searchTerm ? "No projects match your search." : "No projects found in this workspace."}
             </p>
           </div>
         )}

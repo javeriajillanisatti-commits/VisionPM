@@ -15,6 +15,71 @@ import UploadFile from "../../components/tasks/UploadFile";
 import Comments from "../../components/tasks/Comments";
 import { useTheme } from "../../context/ThemeContext";
 
+//  Skeleton loader 
+const Skeleton = ({ dark, className = "" }) => (
+  <div className={`${className} rounded-md ${dark ? "bg-slate-800" : "bg-gray-200"}`} />
+);
+
+const TaskDetailSkeleton = ({ isDarkMode }) => {
+  const card = `rounded-2xl border ${isDarkMode ? "bg-[#11182B] border-[#263149]" : "bg-white border-gray-200"}`;
+  return (
+    <div className={`w-full min-h-screen p-4 sm:p-6 lg:p-10 overflow-x-hidden animate-pulse ${isDarkMode ? "bg-[#05091D]" : "bg-gray-50/60"}`}>
+      <div className="w-full mx-auto space-y-6 sm:space-y-7">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Skeleton dark={isDarkMode} className="w-12 h-12 rounded-xl shrink-0" />
+          <Skeleton dark={isDarkMode} className="h-8 w-72 rounded-lg" />
+        </div>
+
+        {/* Description */}
+        <div className="space-y-3">
+          <Skeleton dark={isDarkMode} className="h-4 w-24" />
+          <div className={`${card} p-6 space-y-3`}>
+            <Skeleton dark={isDarkMode} className="h-4 w-full" />
+            <Skeleton dark={isDarkMode} className="h-4 w-5/6" />
+            <Skeleton dark={isDarkMode} className="h-4 w-4/6" />
+          </div>
+        </div>
+        <div className="space-y-3">
+          <Skeleton dark={isDarkMode} className="h-4 w-32" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className={`${card} p-4 space-y-3`}>
+                <Skeleton dark={isDarkMode} className="h-4 w-20" /><Skeleton dark={isDarkMode} className="h-6 w-28" /></div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between"><Skeleton dark={isDarkMode} className="h-4 w-32" /><Skeleton dark={isDarkMode} className="h-4 w-10" />
+          </div>
+          <div className={`${card} p-5`}>
+            <Skeleton dark={isDarkMode} className="h-3 w-full rounded-full" />
+          </div>
+        </div>
+        <div className="space-y-3">
+          <Skeleton dark={isDarkMode} className="h-4 w-36" />
+          <div className={`${card} p-5 space-y-4`}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton dark={isDarkMode} className="w-5 h-5 rounded" />
+                <Skeleton dark={isDarkMode} className="h-4 w-2/3" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className={`${card} p-5 space-y-4`}>
+              <Skeleton dark={isDarkMode} className="h-5 w-32" />
+              <Skeleton dark={isDarkMode} className="h-24 w-full rounded-xl" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 // Status Dropdown Component
 const StatusDropdown = ({ value, onChange, isDarkMode }) => {
   const [open, setOpen] = useState(false);
@@ -94,60 +159,60 @@ const TaskDetails = () => {
   const navigate = useNavigate();
   const { taskId } = useParams();
   const { isDarkMode } = useTheme();
-   const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
+  const liveTick = useLiveTick({ resources: ["tasks", "projects"] });
   const cachedTask = taskDetailsCache.get(taskId);
 
-const [task, setTask] = useState(cachedTask || null);
-const [loading, setLoading] = useState(!cachedTask);
+  const [task, setTask] = useState(cachedTask || null);
+  const [loading, setLoading] = useState(!cachedTask);
   const statusRef = useRef(null);
   // Fetch and synchronize task
-useEffect(() => {
-  if (!taskId) {
-    setTask(null);
-    setLoading(false);
-    return;
-  }
-
-  const cachedData = taskDetailsCache.get(taskId);
-
-  if (cachedData) {
-    setTask(cachedData);
-    setLoading(false);
-  } else {
-    setLoading(true);
-  }
-
-  let cancelled = false;
-
-  const fetchTask = async () => {
-    try {
-      const data = await getTaskById(taskId);
-      const freshTask = data?.task || data;
-
-      if (!cancelled && freshTask) {
-        taskDetailsCache.set(taskId, freshTask);
-        setTask(freshTask);
-      }
-    } catch (error) {
-      console.error("Error fetching task:", error);
-
-      if (!cancelled && !cachedData) {
-        setTask(null);
-      }
-    } finally {
-      if (!cancelled) {
-        setLoading(false);
-      }
+  useEffect(() => {
+    if (!taskId) {
+      setTask(null);
+      setLoading(false);
+      return;
     }
-  };
 
-  fetchTask();
+    const cachedData = taskDetailsCache.get(taskId);
 
-  return () => {
-    cancelled = true;
-  };
-}, [taskId, liveTick]);
-  
+    if (cachedData) {
+      setTask(cachedData);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    let cancelled = false;
+
+    const fetchTask = async () => {
+      try {
+        const data = await getTaskById(taskId);
+        const freshTask = data?.task || data;
+
+        if (!cancelled && freshTask) {
+          taskDetailsCache.set(taskId, freshTask);
+          setTask(freshTask);
+        }
+      } catch (error) {
+        console.error("Error fetching task:", error);
+
+        if (!cancelled && !cachedData) {
+          setTask(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchTask();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [taskId, liveTick]);
+
   // Open status selector from event
   useEffect(() => {
     const openStatus = () => statusRef.current?.focus();
@@ -171,26 +236,33 @@ useEffect(() => {
     } catch (error) { console.error("Error completing subtask:", error); alert(error?.message || "Unable to complete subtask."); }
   };
 
- const handleStatusUpdate = async (newStatus) => {
-  try {
-    const updatedTask = {
-      ...task,
-      status: newStatus,
-    };
-
-    setTask(updatedTask);
-    taskDetailsCache.set(taskId, updatedTask);
-
-    await updateTask(taskId, {
-      status: newStatus,
-    });
-  } catch (error) {
-    console.error(
-      "Error updating task status:",
-      error
-    );
-  }
-};
+  const handleStatusUpdate = async (newStatus) => {
+    const previousTask = task; 
+        try {
+      const updatedTask = {
+        ...task,
+        status: newStatus,
+      };
+      setTask(updatedTask);
+      taskDetailsCache.set(taskId, updatedTask);
+      const response = await updateTask(taskId, {
+        status: newStatus,
+      });
+      const savedStatus = response?.task?.status;
+      if (savedStatus && savedStatus !== newStatus) {
+        const syncedTask = { ...updatedTask, status: savedStatus };
+        setTask(syncedTask);
+        taskDetailsCache.set(taskId, syncedTask);
+      }
+    } catch (error) {
+      console.error(
+        "Error updating task status:",
+        error
+      );
+      setTask(previousTask);
+      taskDetailsCache.set(taskId, previousTask);
+    }
+  };
 
   // Shared styles
   const sectionCardStyle = `rounded-2xl border shadow-sm transition-all duration-200 ${isDarkMode ? "bg-[#11182B] border-[#263149] hover:border-[#33466A]" : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-md"}`;
@@ -198,10 +270,7 @@ useEffect(() => {
   const valueStyle = `text-sm font-semibold ${isDarkMode ? "text-gray-100" : "text-gray-800"}`;
 
   if (loading) {
-    return (
-      <div className={`min-h-screen p-10 flex items-center justify-center ${isDarkMode ? "bg-[#05091D] text-gray-300" : "bg-gray-50 text-gray-900"}`}
-      >
-        Loading task details...</div>);
+    return <TaskDetailSkeleton isDarkMode={isDarkMode} />;
   }
   if (!task) {
     return (<div className={`min-h-screen p-10 flex items-center justify-center ${isDarkMode ? "bg-[#05091D] text-gray-400" : "bg-gray-50 text-gray-500"}`} >Task not found.</div>);
@@ -257,10 +326,10 @@ useEffect(() => {
 
         {/* Overall Progress */}
         <section>
-           <div className="flex items-center justify-between mb-3">
-          <span className={labelStyle}> Overall Progress </span>
-          <span className={`text-sm font-bold ${task.status === "Completed" ? "text-green-500" : task.status === "In Progress" ? "text-amber-500" : "text-blue-600"}`}>
-            {progress}% </span> </div>
+          <div className="flex items-center justify-between mb-3">
+            <span className={labelStyle}> Overall Progress </span>
+            <span className={`text-sm font-bold ${task.status === "Completed" ? "text-green-500" : task.status === "In Progress" ? "text-amber-500" : "text-blue-600"}`}>
+              {progress}% </span> </div>
 
           <div className={`${sectionCardStyle} p-5`}>
             <div className={`h-3 w-full rounded-full overflow-hidden ${isDarkMode ? "bg-[#263149]" : "bg-gray-100"}`}>
@@ -278,8 +347,8 @@ useEffect(() => {
               <p className={`text-sm py-3 ${isDarkMode ? "text-gray-500" : "text-gray-400"}`} > No subtasks assigned. </p>)} </div> </section>
         {/* Files and Comments */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-           <UploadFile />
-            <Comments taskId={taskId} /> </div>
+          <UploadFile />
+          <Comments taskId={taskId} /> </div>
       </div>
     </div>
   );

@@ -240,7 +240,6 @@ useEffect(() => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const workspaceName = activeWorkspace ? (activeWorkspace.name || activeWorkspace.workspaceName) : "Global";
     
-    // Top Header Banner
     doc.setFillColor(17, 24, 39); 
     doc.rect(0, 0, 210, 35, 'F');
     doc.setTextColor(255, 255, 255);
@@ -316,11 +315,24 @@ useEffect(() => {
     { id: "Team", label: "Team Performance Only" }
   ];
   const currentReportLabel = reportTypeOptions.find(opt => opt.id === reportType)?.label || "All Components (Default)";
+  const SkeletonBox = ({ className = "" }) => <div className={`animate-pulse rounded bg-gray-200 dark:bg-slate-800 ${className}`} />;
+  const ReportTableSkeleton = ({ type }) => (
+    <div className="w-full overflow-hidden animate-pulse">
+      <div className="hidden sm:grid grid-cols-6 gap-3 px-4 py-3 bg-gray-100 dark:bg-slate-800/70 rounded-lg mb-2">
+        {Array.from({ length: type === "project" ? 6 : 5 }).map((_, i) => <SkeletonBox key={i} className="h-3 w-full" />)}
+      </div>
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, row) => (
+          <div key={row} className="grid grid-cols-2 sm:grid-cols-6 gap-3 px-4 py-4 border border-gray-100 dark:border-slate-800 rounded-lg">
+            {Array.from({ length: type === "project" ? 6 : 5 }).map((_, col) => <SkeletonBox key={col} className={`h-3 ${col === 0 ? "w-4/5" : "w-3/5"}`} />)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
   return (
     <div className={`min-h-screen p-6 transition-colors duration-300 ${isDarkMode ? "bg-[#05091D] text-white" : "bg-gray-50 text-gray-900"}`}>
       <div className="max-w-7xl mx-auto space-y-6">
-        
-        {/* Header block section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shrink-0">
           <div className="flex flex-col gap-0.5">
             <h1 className={`text-3xl sm:text-4xl font-bold tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}>Report</h1>
@@ -331,128 +343,69 @@ useEffect(() => {
           </div>
         </div>
 
-        
-        {projectsList.length > 0 && (
+        {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 w-full">
-            
-            {/* Project selection dropdown */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 w-full">
-              <div className="flex items-center gap-2.5 px-1 text-[14px] font-bold text-gray-900 dark:text-slate-400 shrink-0">
-                <Filter size={14} className="text-blue-600 dark:text-blue-400" />
-                <span>Project Filter:</span>
-              </div>
+              <SkeletonBox className="h-4 w-32 shrink-0" />
+              <SkeletonBox className="h-11 flex-1 w-full rounded-xl" />
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 w-full">
+              <SkeletonBox className="h-4 w-28 shrink-0" />
+              <SkeletonBox className="h-11 flex-1 w-full rounded-xl" />
+            </div>
+          </div>
+        ) : projectsList.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 w-full">
+              <div className="flex items-center gap-2.5 px-1 text-[14px] font-bold text-gray-900 dark:text-slate-400 shrink-0"><Filter size={14} className="text-blue-600 dark:text-blue-400" /><span>Project Filter:</span></div>
               <div className="relative flex-1 w-full" ref={projectDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
-                  className={`w-full h-11 flex items-center justify-between px-4 rounded-xl border text-xs font-bold cursor-pointer transition-all bg-white dark:bg-[#11182B] text-gray-700 dark:text-white outline-none ${
-                    isProjectDropdownOpen ? "border-blue-500" : "border-gray-200 dark:border-[#263149]"
-                  }`}
-                >
-                  <span className="truncate">{currentProjectLabel}</span>
-                  <ChevronDown size={14} className={`text-gray-400 transition-transform ${isProjectDropdownOpen ? "rotate-180" : ""}`} />
+                <button type="button" onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)} className={`w-full h-11 flex items-center justify-between px-4 rounded-xl border text-xs font-bold cursor-pointer transition-all bg-white dark:bg-[#11182B] text-gray-700 dark:text-white outline-none ${isProjectDropdownOpen ? "border-blue-500" : "border-gray-200 dark:border-[#263149]"}`}>
+                  <span className="truncate">{currentProjectLabel}</span><ChevronDown size={14} className={`text-gray-400 transition-transform ${isProjectDropdownOpen ? "rotate-180" : ""}`} />
                 </button>
-                {isProjectDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-2 w-full bg-white dark:bg-[#11182B] border border-gray-200 dark:border-[#263149] rounded-xl shadow-xl py-1 z-50 max-h-60 overflow-y-auto">
-                    <button
-                      type="button"
-                      onClick={() => { setSelectedProjectId("All"); setIsProjectDropdownOpen(false); }}
-                      className={`w-full text-left px-4 py-2 text-xs transition-colors cursor-pointer ${selectedProjectId === "All" ? "bg-blue-600 text-white font-semibold" : "text-gray-700 dark:text-gray-300 hover:bg-blue-600 hover:text-white"}`}
-                    >
-                      All Workspace Projects
-                    </button>
-                    {projectsList.map((proj) => {
-                      const id = proj._id || proj.id;
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => { setSelectedProjectId(id); setIsProjectDropdownOpen(false); }}
-                          className={`w-full text-left px-4 py-2 text-xs transition-colors cursor-pointer ${selectedProjectId === id ? "bg-blue-600 text-white font-semibold" : "text-gray-700 dark:text-gray-300 hover:bg-blue-600 hover:text-white"}`}
-                        >
-                          {proj.projectName || proj.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                {isProjectDropdownOpen && <div className="absolute left-0 right-0 top-full mt-2 w-full bg-white dark:bg-[#11182B] border border-gray-200 dark:border-[#263149] rounded-xl shadow-xl py-1 z-50 max-h-60 overflow-y-auto"><button type="button" onClick={() => { setSelectedProjectId("All"); setIsProjectDropdownOpen(false); }} className={`w-full text-left px-4 py-2 text-xs transition-colors cursor-pointer ${selectedProjectId === "All" ? "bg-blue-600 text-white font-semibold" : "text-gray-700 dark:text-gray-300 hover:bg-blue-600 hover:text-white"}`}>All Workspace Projects</button>{projectsList.map((proj) => { const id = proj._id || proj.id; return <button key={id} type="button" onClick={() => { setSelectedProjectId(id); setIsProjectDropdownOpen(false); }} className={`w-full text-left px-4 py-2 text-xs transition-colors cursor-pointer ${selectedProjectId === id ? "bg-blue-600 text-white font-semibold" : "text-gray-700 dark:text-gray-300 hover:bg-blue-600 hover:text-white"}`}>{proj.projectName || proj.name}</button>; })}</div>}
               </div>
             </div>
-
-            {/* Custom report type dropdown */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 w-full">
-              <div className="flex items-center gap-2.5 px-1 text-[14px] font-bold text-gray-900 dark:text-slate-400 shrink-0">
-                <FileText size={14} className="text-blue-500 dark:text-pblue-500" />
-                <span>Report Type:</span>
-              </div>
+              <div className="flex items-center gap-2.5 px-1 text-[14px] font-bold text-gray-900 dark:text-slate-400 shrink-0"><FileText size={14} className="text-blue-500 dark:text-pblue-500" /><span>Report Type:</span></div>
               <div className="relative flex-1 w-full" ref={reportDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)}
-                  className={`w-full h-11 flex items-center justify-between px-4 rounded-xl border text-xs font-bold cursor-pointer transition-all bg-white dark:bg-[#11182B] text-gray-700 dark:text-white outline-none ${
-                    isReportDropdownOpen ? "border-blue-500" : "border-gray-200 dark:border-[#263149]"
-                  }`}
-                >
-                  <span className="truncate">{currentReportLabel}</span>
-                  <ChevronDown size={14} className={`text-gray-400 transition-transform ${isReportDropdownOpen ? "rotate-180" : ""}`} />
-                </button>
-                {isReportDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-2 w-full bg-white dark:bg-[#11182B] border border-gray-200 dark:border-[#263149] rounded-xl shadow-xl py-1 z-50">
-                    {reportTypeOptions.map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => { setReportType(opt.id); setIsReportDropdownOpen(false); }}
-                        className={`w-full text-left px-4 py-2 text-xs transition-colors cursor-pointer ${reportType === opt.id ? "bg-blue-600 text-white font-semibold" : "text-gray-700 dark:text-gray-300 hover:bg-blue-600 hover:text-white"}`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <button type="button" onClick={() => setIsReportDropdownOpen(!isReportDropdownOpen)} className={`w-full h-11 flex items-center justify-between px-4 rounded-xl border text-xs font-bold cursor-pointer transition-all bg-white dark:bg-[#11182B] text-gray-700 dark:text-white outline-none ${isReportDropdownOpen ? "border-blue-500" : "border-gray-200 dark:border-[#263149]"}`}><span className="truncate">{currentReportLabel}</span><ChevronDown size={14} className={`text-gray-400 transition-transform ${isReportDropdownOpen ? "rotate-180" : ""}`} /></button>
+                {isReportDropdownOpen && <div className="absolute left-0 right-0 top-full mt-2 w-full bg-white dark:bg-[#11182B] border border-gray-200 dark:border-[#263149] rounded-xl shadow-xl py-1 z-50">{reportTypeOptions.map((opt) => <button key={opt.id} type="button" onClick={() => { setReportType(opt.id); setIsReportDropdownOpen(false); }} className={`w-full text-left px-4 py-2 text-xs transition-colors cursor-pointer ${reportType === opt.id ? "bg-blue-600 text-white font-semibold" : "text-gray-700 dark:text-gray-300 hover:bg-blue-600 hover:text-white"}`}>{opt.label}</button>)}</div>}
               </div>
             </div>
-
           </div>
         )}
 
         {error ? (
           <div className="p-4 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-2xl">{error}</div>
         ) : loading ? (
-          <div className="w-full h-96 flex items-center justify-center"><p className="text-gray-500 font-black animate-pulse text-sm uppercase tracking-widest">Compiling Report Analytics...</p></div>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200/70 dark:border-slate-800 p-5 animate-pulse"><SkeletonBox className="h-3 w-28 mb-4" /><SkeletonBox className="h-7 w-20" /></div>)}
+            </div>
+            <div className="space-y-6">
+              <section className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-gray-200/70 dark:border-slate-800 shadow-sm">
+                <SkeletonBox className="h-5 w-56 mb-5" />
+                <ReportTableSkeleton type="project" />
+              </section>
+              <section className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-gray-200/70 dark:border-slate-800 shadow-sm">
+                <SkeletonBox className="h-5 w-52 mb-5" />
+                <ReportTableSkeleton type="team" />
+              </section>
+            </div>
+          </div>
         ) : (
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {stats.map((s, i) => { const meta = getCardMeta(s.title); return <StatsCard key={i} title={s.title} count={s.count} icon={meta.icon} bgColor={meta.bg} iconColor={meta.text} />; })}
             </div>
-
             <div className="space-y-6">
-              {/* Conditional display block */}
-              {(reportType === "All" || reportType === "Project") && (
-                <section className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-gray-200/70 dark:border-slate-800 shadow-sm">
-                  <h2 className={`text-lg pb-2 font-bold tracking-tight flex items-center gap-2 ${isDarkMode ? "text-white" : "text-gray-800"}`} >
-                     Project Performance Report
-                  </h2>
-                  <ProjectPerformance projects={projectsPerformanceData} />
-                </section>
-              )}
-              
-              {/* Team Analytics */}
-              {(reportType === "All" || reportType === "Team") && (
-                <section className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-gray-200/70 dark:border-slate-800 shadow-sm">
-                  <h2 className={`text-lg pb-2 font-bold tracking-tight flex items-center gap-2 ${isDarkMode ? "text-white" : "text-gray-800"}`}>
-                   Team Member Performance
-                  </h2>
-                  <TeamPerformance team={teamPerformanceData} />
-                </section>
-              )}
+              {(reportType === "All" || reportType === "Project") && <section className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-gray-200/70 dark:border-slate-800 shadow-sm"><h2 className={`text-lg pb-2 font-bold tracking-tight flex items-center gap-2 ${isDarkMode ? "text-white" : "text-gray-800"}`}>Project Performance Report</h2><ProjectPerformance projects={projectsPerformanceData} /></section>}
+              {(reportType === "All" || reportType === "Team") && <section className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-gray-200/70 dark:border-slate-800 shadow-sm"><h2 className={`text-lg pb-2 font-bold tracking-tight flex items-center gap-2 ${isDarkMode ? "text-white" : "text-gray-800"}`}>Team Member Performance</h2><TeamPerformance team={teamPerformanceData} /></section>}
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
 };
-
 export default Report;
