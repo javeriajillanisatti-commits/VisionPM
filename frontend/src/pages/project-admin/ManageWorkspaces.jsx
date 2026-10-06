@@ -353,6 +353,7 @@ const openHealthScanner = async workspace => {
     const projects = healthData || [];
     const tasks = projects.flatMap(p => p.tasks || []);
     const completedTasks = tasks.filter(task => norm(task.status) === "completed").length;
+    const inProgressTasks = tasks.filter(task => ["in progress", "inprogress", "in-progress"].includes(norm(task.status))).length;
     const overdueTasks = tasks.filter(isOverdue).length;
     const riskyProjects = projects.filter(isRisky).length;
 
@@ -362,7 +363,8 @@ const openHealthScanner = async workspace => {
       completedTasks,
       overdueTasks,
       highPriorityTasks: tasks.filter(task => norm(task.priority) === "high").length,
-      progress: tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0,
+      // completed = 100%, in progress = 50%
+      progress: tasks.length ? Math.round((inProgressTasks * 50 + completedTasks * 100) / tasks.length) : 0,
       riskyProjects,
       status:
         riskyProjects >= Math.max(2, Math.ceil(projects.length / 2))

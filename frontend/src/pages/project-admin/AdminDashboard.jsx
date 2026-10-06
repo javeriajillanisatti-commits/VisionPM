@@ -50,7 +50,7 @@ const normalizeDashboard = data => {
 };
 
 const AdminDashboard = () => {
-  const liveTick = useLiveTick({ resources: ["projects", "tasks", "users", "workspaces"] });
+  const liveTick = useLiveTick();
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
   const [dashboard, setDashboard] = useState(initialDashboard);

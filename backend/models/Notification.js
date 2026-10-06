@@ -77,4 +77,7 @@ const notificationSchema = new mongoose.Schema(
   }
 );
 
+// Fast "my notifications, newest first" and unread counts.
+notificationSchema.index({ recipient: 1, createdAt: -1 });
+
 module.exports = mongoose.model("Notification", notificationSchema);

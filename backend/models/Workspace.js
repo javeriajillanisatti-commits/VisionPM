@@ -26,4 +26,7 @@ const workspaceSchema = new mongoose.Schema(
   }
 );
 
+// Fast "workspaces of this admin" lookup (dashboard, workspace list).
+workspaceSchema.index({ projectAdmin: 1 });
+
 module.exports = mongoose.model("Workspace", workspaceSchema);

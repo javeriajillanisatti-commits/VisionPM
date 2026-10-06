@@ -25,6 +25,20 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>VisionPM</title>
+    <script>
+      // Start talking to the backend while the JS bundle is still downloading:
+      // opens the connection early and wakes a sleeping host.
+      (function () {
+        var u = "%REACT_APP_API_URL%";
+        if (u.indexOf("http") !== 0) return;
+        var l = document.createElement("link");
+        l.rel = "preconnect";
+        l.href = u;
+        l.crossOrigin = "anonymous";
+        document.head.appendChild(l);
+        try { fetch(u + "/health", { mode: "no-cors", cache: "no-store" }); } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

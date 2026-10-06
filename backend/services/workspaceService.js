@@ -224,11 +224,14 @@ const getWorkspaceMonitorData = async (workspaceId, userId, userRole) => {
     projectFilter(workspaceId, userRole, userId)
   ).sort({ createdAt: -1 });
 
+  const monitorTasksMap = await loadTasksByProject(
+    projects.map((p) => p._id),
+    "fullName email role"
+  );
+
   const monitorData = await Promise.all(
     projects.map(async (project) => {
-      const tasks = await Task.find({ project: project._id })
-        .populate("assignedTo", "fullName email role")
-        .sort({ createdAt: 1 });
+      const tasks = monitorTasksMap.get(String(project._id)) || [];
 
       const total = tasks.length;
       const completed = tasks.filter(
@@ -253,7 +256,10 @@ const getWorkspaceMonitorData = async (workspaceId, userId, userRole) => {
         todo,
         inProgress,
         completed,
-        progress: total ? Math.round((completed / total) * 100) : 0,
+        // completed = 100%, in progress = 50%, todo = 0%
+        progress: total
+          ? Math.round((inProgress * 50 + completed * 100) / total)
+          : 0,
         tasks: tasks.map((task) => formatTask(task)),
       };
     })
@@ -353,15 +359,21 @@ const getWorkspaceProjectMap = async (workspaceId, userId, userRole) => {
     projectFilter(workspaceId, userRole, userId)
   ).sort({ createdAt: -1 });
 
+  const mapTasksByProject = await loadTasksByProject(
+    projects.map((p) => p._id),
+    "fullName email role profilePic"
+  );
+
   const projectMap = await Promise.all(
     projects.map(async (project) => {
-      const tasks = await Task.find({ project: project._id })
-        .populate("assignedTo", "fullName email role profilePic")
-        .sort({ createdAt: 1 });
+      const tasks = mapTasksByProject.get(String(project._id)) || [];
 
       const formattedTasks = tasks.map((task) => formatTask(task, true));
       const completed = formattedTasks.filter(
         (task) => task.status.toLowerCase() === "completed"
+      ).length;
+      const inProgressCount = formattedTasks.filter((task) =>
+        ["in progress", "inprogress"].includes(task.status.toLowerCase())
       ).length;
 
       return {
@@ -370,7 +382,9 @@ const getWorkspaceProjectMap = async (workspaceId, userId, userRole) => {
         description: project.description || "",
         status: project.status || "Planning",
         progress: formattedTasks.length
-          ? Math.round((completed / formattedTasks.length) * 100)
+          ? Math.round(
+              (inProgressCount * 50 + completed * 100) / formattedTasks.length
+            )
           : 0,
         totalTasks: formattedTasks.length,
         tasks: formattedTasks,
@@ -396,6 +410,21 @@ const getWorkspaceProjectMap = async (workspaceId, userId, userRole) => {
   };
 };
 
+// Load tasks for many projects with ONE query (instead of one query per project).
+const loadTasksByProject = async (projectIds, populateAssignee = null) => {
+  let query = Task.find({ project: { $in: projectIds } });
+  if (populateAssignee) query = query.populate("assignedTo", populateAssignee);
+  const allTasks = await query.sort({ createdAt: 1 });
+
+  const map = new Map();
+  allTasks.forEach((task) => {
+    const key = String(task.project);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(task);
+  });
+  return map;
+};
+
 // Scan project health
 const getProjectHealth = async (workspaceId, userId, userRole) => {
   if (!isValidId(workspaceId))
@@ -410,9 +439,11 @@ const getProjectHealth = async (workspaceId, userId, userRole) => {
     projectFilter(workspaceId, userRole, userId)
   ).sort({ createdAt: -1 });
 
+  const healthTasksMap = await loadTasksByProject(projects.map((p) => p._id));
+
   const healthData = await Promise.all(
     projects.map(async (project) => {
-      const tasks = await Task.find({ project: project._id });
+      const tasks = healthTasksMap.get(String(project._id)) || [];
       const totalTasks = tasks.length;
 
       const completedTasks = tasks.filter(
@@ -441,7 +472,7 @@ const getProjectHealth = async (workspaceId, userId, userRole) => {
       ).length;
 
       const progress = totalTasks
-        ? Math.round((completedTasks / totalTasks) * 100)
+        ? Math.round((inProgressTasks * 50 + completedTasks * 100) / totalTasks)
         : 0;
 
       let score = 100;

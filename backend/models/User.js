@@ -182,6 +182,9 @@ userSchema.pre("save", function () {
   }
 });
 
+// Fast "members of this workspace" lookup.
+userSchema.index({ workspace: 1, role: 1 });
+
 const User = mongoose.model("User", userSchema);
 
 module.exports = User;

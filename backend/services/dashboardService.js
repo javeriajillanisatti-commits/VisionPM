@@ -36,17 +36,22 @@ const getDashboardData = async (projectAdminId, workspaceId) => {
     workspace: workspaceId ? workspaceId : { $in: workspaceIds },
   };
 
-  // Get workspace projects
-  const projects = await Project.find(projectFilter).select(
-    "_id projectName status createdAt workspace"
-  );
+  // Run the independent queries at the same time instead of one after another.
+  const [projects, recentProjects] = await Promise.all([
+    Project.find(projectFilter).select(
+      "_id projectName status createdAt workspace"
+    ),
+    Project.find(projectFilter).sort({ createdAt: -1 }).limit(5).lean(),
+  ]);
 
   const projectIds = projects.map((project) => project._id);
 
   // Get all tasks once for dashboard calculations
   const tasks = await Task.find({
     project: { $in: projectIds },
-  }).select("status deadline createdAt project");
+  })
+    .select("status deadline createdAt project")
+    .lean();
 
   const totalWorkspaces = workspaceIds.length;
   const totalProjects = projectIds.length;
@@ -118,12 +123,6 @@ const getDashboardData = async (projectAdminId, workspaceId) => {
     { name: "Upcoming", value: upcoming },
   ];
 
-  // Get five most recent projects
-  const recentProjects = await Project.find(projectFilter)
-    .sort({ createdAt: -1 })
-    .limit(5)
-    .lean();
-
   // Calculate progress for recent projects
   const recentProjectsWithProgress = recentProjects.map((project) => {
     const projectTasks = tasks.filter(
@@ -143,19 +142,10 @@ const getDashboardData = async (projectAdminId, workspaceId) => {
       (task) => task.status === "Todo" || task.status === "To Do"
     ).length;
 
-    const projectStatus = project.status?.toString().trim().toLowerCase();
-
-    const progress =
-      projectStatus === "planning"
-        ? 0
-        : projectStatus === "in progress" ||
-          projectStatus === "in-progress"
-        ? 50
-        : projectStatus === "completed"
-        ? 100
-        : tasksCount
-        ? Math.round((completed / tasksCount) * 100)
-        : 0;
+    // Progress is driven by real task data: completed = 100%, in progress = 50%.
+    const progress = tasksCount
+      ? Math.round((inProgress * 50 + completed * 100) / tasksCount)
+      : 0;
 
     return {
       ...project,
