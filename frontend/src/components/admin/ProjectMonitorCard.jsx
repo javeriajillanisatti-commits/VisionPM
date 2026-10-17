@@ -1,28 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
-import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 
-const ProjectMonitorCard = ({ project, onView, onEdit, onDelete }) => {
+const ProjectMonitorCard = ({ project, onView, onDelete }) => {
   const { isDarkMode } = useTheme();
-  const [showMenu, setShowMenu] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
   const [isDescriptionLong, setIsDescriptionLong] = useState(false);
-  const menuRef = useRef(null);
   const descriptionRef = useRef(null);
 
   const {
     _id, projectName, description, status, workspace, createdBy,
     totalTasks = 0, todo = 0, inProgress = 0, completed = 0,
   } = project;
-
-  useEffect(() => {
-    const closeMenu = event => {
-      if (menuRef.current && !menuRef.current.contains(event.target))
-        setShowMenu(false);
-    };
-    document.addEventListener("mousedown", closeMenu);
-    return () => document.removeEventListener("mousedown", closeMenu);
-  }, []);
 
   useEffect(() => {
     const element = descriptionRef.current;
@@ -38,6 +27,7 @@ const ProjectMonitorCard = ({ project, onView, onEdit, onDelete }) => {
 
   const calculatedTotal = Object.values(counts).reduce((sum, value) => sum + value, 0);
   const displayTotal = calculatedTotal || Number(totalTasks) || 0;
+  const canDelete = displayTotal > 0 && counts.completed === displayTotal && counts.todo === 0 && counts.inProgress === 0;
   const progress = calculatedTotal
     ? Math.round(((counts.inProgress * 50) + (counts.completed * 100)) / calculatedTotal)
     : 0;
@@ -58,16 +48,6 @@ const ProjectMonitorCard = ({ project, onView, onEdit, onDelete }) => {
           ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
           : "bg-blue-50 text-blue-600 border-blue-100";
     }
-  };
-
-  const handleEdit = () => {
-    setShowMenu(false);
-    onEdit();
-  };
-
-  const handleDelete = () => {
-    setShowMenu(false);
-    onDelete(_id);
   };
 
   const mutedText = isDarkMode ? "text-gray-500" : "text-gray-400";
@@ -204,53 +184,24 @@ const ProjectMonitorCard = ({ project, onView, onEdit, onDelete }) => {
               View Details
             </button>
 
-            <div ref={menuRef} className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowMenu(value => !value)}
-                aria-label="Project actions"
-                className={`w-9 h-9 min-[430px]:w-10 min-[430px]:h-10 rounded-xl border flex items-center justify-center transition-all active:scale-[0.96] ${
-                  isDarkMode
-                    ? "bg-[#111936] border-[#263149] text-gray-400 hover:text-white hover:bg-[#18223A]"
-                    : "bg-white border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-                }`}
-              >
-                <MoreVertical size={18} />
-              </button>
-
-              {showMenu && (
-                <div
-                  className={`absolute right-0 top-full mt-2 z-[100] w-36 rounded-xl border p-1.5 shadow-xl ${
-                    isDarkMode ? "bg-[#111936] border-[#263149]" : "bg-white border-gray-200"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={handleEdit}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
-                      isDarkMode
-                        ? "text-gray-300 hover:bg-blue-500/10 hover:text-blue-400"
-                        : "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                    }`}
-                  >
-                    <Pencil size={14} />
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
-                      isDarkMode
-                        ? "text-gray-300 hover:bg-red-500/10 hover:text-red-400"
-                        : "text-gray-700 hover:bg-red-50 hover:text-red-600"
-                    }`}
-                  >
-                    <Trash2 size={14} />
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => canDelete && onDelete(_id)}
+              disabled={!canDelete}
+              title={canDelete ? "Delete completed project" : "All project tasks must be completed before deletion"}
+              aria-label={canDelete ? "Delete project" : "Project cannot be deleted until all tasks are completed"}
+              className={`shrink-0 w-9 h-9 min-[430px]:w-10 min-[430px]:h-10 rounded-xl border flex items-center justify-center transition-all ${
+                canDelete
+                  ? isDarkMode
+                    ? "bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 active:scale-[0.96]"
+                    : "bg-red-50 border-red-100 text-red-600 hover:bg-red-100 hover:text-red-700 active:scale-[0.96]"
+                  : isDarkMode
+                    ? "bg-[#111936] border-[#263149] text-gray-600 cursor-not-allowed opacity-60"
+                    : "bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed opacity-70"
+              }`}
+            >
+              <Trash2 size={18} />
+            </button>
           </div>
         </div>
       </div>
