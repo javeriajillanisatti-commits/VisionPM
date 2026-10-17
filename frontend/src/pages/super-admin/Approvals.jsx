@@ -1,6 +1,6 @@
 import { useLiveTick } from "../../hooks/useLiveRefresh";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { FileText, Clock, CheckCircle, XCircle, X, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { FileText, Clock, CheckCircle, XCircle, X, ChevronLeft, ChevronRight, ChevronDown, Trash2 } from "lucide-react";
 import CVDetailsModal from "../../components/approvaltable/CVDetailsModal";
 import approvalService from "../../services/approvalService";
 import { useTheme } from "../../context/ThemeContext";
@@ -10,6 +10,21 @@ const PAGE_SIZE = 5;
 const approvalsCache = new Map();
 const cvDetailsCache = new Map();
 
+const HIDDEN_KEY = "hidden-approval-ids";
+
+const loadHiddenIds = () => {
+  try {
+    return JSON.parse(localStorage.getItem(HIDDEN_KEY)) || [];
+  } catch {
+    return [];
+  }
+};
+
+const saveHiddenIds = (ids) => {
+  try {
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids));
+  } catch { }
+};
 const AVATAR_COLORS = [
   ["bg-blue-100", "text-blue-700", "bg-blue-500/15", "text-blue-300"],
   ["bg-emerald-100", "text-emerald-700", "bg-emerald-500/15", "text-emerald-300"],
@@ -52,7 +67,7 @@ const StatusDropdown = ({ currentStatus, onRequestChange, isDarkMode }) => {
   }, []);
   const options = isFinalStatus
     ? [{ value: currentStatus, label: currentStatus === "Approved" ? "Approved " : "Rejected" }]
-    : [{ value: "Pending", label: "Pending" }, { value: "Approved", label: "Approve" }, { value: "Rejected", label: "Rejected" }, ];
+    : [{ value: "Pending", label: "Pending" }, { value: "Approved", label: "Approve" }, { value: "Rejected", label: "Rejected" },];
 
   const selected = options.find((o) => o.value === currentStatus)?.label || "Select";
 
@@ -166,7 +181,8 @@ const FilterButton = ({ item, active, count, isDarkMode, onClick }) => (
   </button>
 );
 
-const RequestRow = ({ request, isDarkMode, onStatusChange, onViewCV }) => {
+const RequestRow = ({ request, isDarkMode, onStatusChange, onViewCV, onDelete }) => {
+  const isFinal = request.accountStatus === "Approved" || request.accountStatus === "Rejected";
   const name = request.name || request.fullName || "Unknown";
   const avatar = getAvatarColor(name);
 
@@ -197,10 +213,19 @@ const RequestRow = ({ request, isDarkMode, onStatusChange, onViewCV }) => {
           isDarkMode={isDarkMode}
         />
       </div>
-
-      <div>
+      <div className="flex items-center gap-2">
         <button type="button" onClick={() => onViewCV(request)}
-          className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold hover:from-blue-700 hover:to-indigo-700 active:scale-95 transition-all shadow-xs shadow-blue-500/20" >View Details</button> </div>
+          className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold hover:from-blue-700 hover:to-indigo-700 active:scale-95 transition-all shadow-xs shadow-blue-500/20" >View Details</button>
+
+        {isFinal && (
+          <button type="button" title="Remove from list" onClick={() => onDelete(request)}
+            className={`p-2 rounded-lg border transition-all active:scale-95 ${isDarkMode
+              ? "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"
+              : "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100"}`}>
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
     </div>
   );
 };
@@ -231,14 +256,13 @@ const PaginationBar = ({ currentPage, totalPages, setCurrentPage, isDarkMode }) 
 );
 const ConfirmationModal = ({ isDarkMode, pendingChange, onCancel, onConfirm, isSubmitting }) => (
   <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 px-4">
-<div className={`rounded-2xl shadow-2xl max-w-sm w-full p-6 transition-colors duration-300 ${isDarkMode ? "bg-[#11182B] border border-[#263149]" : "bg-white"}`}>      <h3 className={`text-base font-bold ${isDarkMode ? "text-white" : "text-[#0D1B2A]"}`}> Confirm status change </h3>
+    <div className={`rounded-2xl shadow-2xl max-w-sm w-full p-6 transition-colors duration-300 ${isDarkMode ? "bg-[#11182B] border border-[#263149]" : "bg-white"}`}>      <h3 className={`text-base font-bold ${isDarkMode ? "text-white" : "text-[#0D1B2A]"}`}> Confirm status change </h3>
       <p className={`text-sm mt-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
-         Are you sure you want to mark  <span className={`text-sm  mt-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>{pendingChange.userName} </span> 
-            as  <span className={`text-sm mt-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>{pendingChange.newStatus === "Approved" ? "Approved" : "Rejected"}</span>?</p>
-<p className={`text-xs mt-3 font-medium ${
-    isDarkMode ? "text-emerald-400" : "text-emerald-600"
-  }`}>You can change the status only once. Once you approve or reject this request, the status cannot be changed again.
-</p>
+        Are you sure you want to mark  <span className={`text-sm  mt-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>{pendingChange.userName} </span>
+        as  <span className={`text-sm mt-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>{pendingChange.newStatus === "Approved" ? "Approved" : "Rejected"}</span>?</p>
+      <p className={`text-xs mt-3 font-medium ${isDarkMode ? "text-emerald-400" : "text-emerald-600"
+        }`}>You can change the status only once. Once you approve or reject this request, the status cannot be changed again.
+      </p>
       <div className="flex items-center justify-end gap-3 mt-6">
         <button type="button" disabled={isSubmitting}
           onClick={onCancel}
@@ -257,6 +281,29 @@ const ConfirmationModal = ({ isDarkMode, pendingChange, onCancel, onConfirm, isS
   </div>
 );
 
+const DeleteConfirmModal = ({ isDarkMode, target, onCancel, onConfirm }) => (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 px-4">
+    <div className={`rounded-2xl shadow-2xl max-w-sm w-full p-6 ${isDarkMode ? "bg-[#11182B] border border-[#263149]" : "bg-white"}`}>
+      <h3 className={`text-base font-bold ${isDarkMode ? "text-white" : "text-[#0D1B2A]"}`}>Remove from list</h3>
+      <p className={`text-sm mt-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
+        Are you sure you want to remove <b>{target.userName}</b> from this list?
+      </p>
+
+      <div className="flex items-center justify-end gap-3 mt-6">
+        <button type="button" onClick={onCancel}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold active:scale-95 transition-all ${isDarkMode ? "text-gray-400 hover:bg-white/5" : "text-gray-600 hover:bg-gray-100"}`}>
+          Cancel
+        </button>
+        <button type="button" onClick={onConfirm}
+          className="px-4 py-2 rounded-lg text-sm font-semibold text-white shadow-md active:scale-95 transition-all bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 shadow-rose-500/20">
+          Remove
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+
 const ToastBanner = ({ toast, onClose }) => (
   <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg text-white text-sm font-semibold ${toast.type === "success" ? "bg-emerald-600" : "bg-rose-600"}`}>
     {toast.message}
@@ -269,13 +316,13 @@ const ToastBanner = ({ toast, onClose }) => (
 const Approvals = () => {
   const { isDarkMode } = useTheme();
   const liveTick = useLiveTick({
-  resources: ["users", "approvals", "auth"],
-});
+    resources: ["users", "approvals", "auth"],
+  });
   const cacheKey = "approval-requests";
-const cachedRequests = approvalsCache.get(cacheKey);
+  const cachedRequests = approvalsCache.get(cacheKey);
 
-const [requests, setRequests] = useState(cachedRequests || []);
-const [initialLoading, setInitialLoading] = useState(!cachedRequests);
+  const [requests, setRequests] = useState(cachedRequests || []);
+  const [initialLoading, setInitialLoading] = useState(!cachedRequests);
   const [cvLoading, setCvLoading] = useState(false);
   const [showCVModal, setShowCVModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -284,64 +331,65 @@ const [initialLoading, setInitialLoading] = useState(!cachedRequests);
   const [isSubmittingStatus, setIsSubmittingStatus] = useState(false);
   const [toast, setToast] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-
+  const [hiddenIds, setHiddenIds] = useState(loadHiddenIds);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const showToast = useCallback((message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-const fetchRequests = useCallback(
-  async (showLoader = false) => {
-    const cachedData = approvalsCache.get(cacheKey);
+  const fetchRequests = useCallback(
+    async (showLoader = false) => {
+      const cachedData = approvalsCache.get(cacheKey);
 
-    if (showLoader && !cachedData) {
-      setInitialLoading(true);
-    }
+      if (showLoader && !cachedData) {
+        setInitialLoading(true);
+      }
 
-    try {
-      const response = await approvalService.getPendingRequests();
-      const freshRequests = response.users || [];
+      try {
+        const response = await approvalService.getPendingRequests();
+        const freshRequests = response.users || [];
 
-      setRequests(freshRequests);
-      approvalsCache.set(cacheKey, freshRequests);
-    } catch (error) {
-      console.error(
-        " Fetch Requests Error:",
-        error.response?.data || error.message || error
-      );
+        setRequests(freshRequests);
+        approvalsCache.set(cacheKey, freshRequests);
+      } catch (error) {
+        console.error(
+          " Fetch Requests Error:",
+          error.response?.data || error.message || error
+        );
 
-      if (!cachedData) {
-        showToast(
-          error.response?.data?.message ||
+        if (!cachedData) {
+          showToast(
+            error.response?.data?.message ||
             error.message ||
             "Unable to load requests",
-          "error"
-        );
+            "error"
+          );
+        }
+      } finally {
+        setInitialLoading(false);
       }
-    } finally {
+    },
+    [showToast]
+  );
+
+  useEffect(() => {
+    const cachedData = approvalsCache.get(cacheKey);
+
+    if (cachedData) {
+      setRequests(cachedData);
       setInitialLoading(false);
+      fetchRequests(false);
+    } else {
+      fetchRequests(true);
     }
-  },
-  [showToast]
-);
+  }, [fetchRequests]);
 
-useEffect(() => {
-  const cachedData = approvalsCache.get(cacheKey);
+  useEffect(() => {
+    if (!liveTick) return;
 
-  if (cachedData) {
-    setRequests(cachedData);
-    setInitialLoading(false);
     fetchRequests(false);
-  } else {
-    fetchRequests(true);
-  }
-}, [fetchRequests]);
-
-useEffect(() => {
-  if (!liveTick) return;
-
-  fetchRequests(false);
-}, [liveTick, fetchRequests]);
+  }, [liveTick, fetchRequests]);
 
   useEffect(() => setCurrentPage(1), [statusFilter]);
   const requestStatusChange = (request, newStatus) => {
@@ -351,10 +399,28 @@ useEffect(() => {
       return;
     }
     if (request.accountStatus !== "Pending") return;
-    setPendingChange({ userId: request._id, userName: request.name || request.fullName || "this user",
+    setPendingChange({
+      userId: request._id, userName: request.name || request.fullName || "this user",
       currentStatus: request.accountStatus,
       newStatus,
     });
+  };
+
+  const requestDelete = (request) => {
+    if (request.accountStatus === "Pending") return;
+    setDeleteTarget({
+      userId: String(request._id),
+      userName: request.name || request.fullName || "this user",
+    });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    const updated = [...hiddenIds, deleteTarget.userId];
+    setHiddenIds(updated);
+    saveHiddenIds(updated);
+    showToast(`${deleteTarget.userName} removed from list`);
+    setDeleteTarget(null);
   };
 
   const confirmStatusChange = async () => {
@@ -393,54 +459,59 @@ useEffect(() => {
     }
   };
 
-// Load CV details
-const handleViewCV = async (request) => {
-  const cacheKey = String(request._id);
-  const cachedCV = cvDetailsCache.get(cacheKey);
+  // Load CV details
+  const handleViewCV = async (request) => {
+    const cacheKey = String(request._id);
+    const cachedCV = cvDetailsCache.get(cacheKey);
 
-  if (cachedCV) {
-    setSelectedRequest(cachedCV);
-    setShowCVModal(true);
-    setCvLoading(false);
-    return;
-  }
+    if (cachedCV) {
+      setSelectedRequest(cachedCV);
+      setShowCVModal(true);
+      setCvLoading(false);
+      return;
+    }
 
-  setCvLoading(true);
+    setCvLoading(true);
 
-  try {
-    const cvData = await approvalService.getCVDetails(request._id);
+    try {
+      const cvData = await approvalService.getCVDetails(request._id);
 
-    cvDetailsCache.set(cacheKey, cvData);
+      cvDetailsCache.set(cacheKey, cvData);
 
-    setSelectedRequest(cvData);
-    setShowCVModal(true);
-  } catch (error) {
-    console.error(
-      "CV Details Error:",
-      error.response?.data || error.message || error
-    );
+      setSelectedRequest(cvData);
+      setShowCVModal(true);
+    } catch (error) {
+      console.error(
+        "CV Details Error:",
+        error.response?.data || error.message || error
+      );
 
-    showToast(
-      error.response?.data?.message ||
+      showToast(
+        error.response?.data?.message ||
         error.message ||
         "Unable to load CV details",
-      "error"
-    );
-  } finally {
-    setCvLoading(false);
-  }
-};
+        "error"
+      );
+    } finally {
+      setCvLoading(false);
+    }
+  };
 
-  const totalReq = requests.length;
-  const pendingReq = requests.filter((r) => r.accountStatus === "Pending").length;
-  const approvedReq = requests.filter((r) => r.accountStatus === "Approved").length;
-  const deniedCount = requests.filter((r) => r.accountStatus === "Rejected").length;
+  const listRequests = requests.filter((r) => !hiddenIds.includes(String(r._id)));
 
-  const filteredRequests = requests.filter((r) => statusFilter === "All" || r.accountStatus === statusFilter);
+  const totalReq = listRequests.length;
+  const pendingReq = listRequests.filter((r) => r.accountStatus === "Pending").length;
+  const approvedReq = listRequests.filter((r) => r.accountStatus === "Approved").length;
+  const deniedCount = listRequests.filter((r) => r.accountStatus === "Rejected").length;
+
+  const filteredRequests = listRequests.filter((r) => statusFilter === "All" || r.accountStatus === statusFilter);
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
   const visibleRequests = filteredRequests.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const filterCounts = { All: totalReq, Pending: pendingReq, Approved: approvedReq, Rejected: deniedCount };
 
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
   const stats = [
     ["Total Request", totalReq, <FileText size={20} />, isDarkMode ? "bg-blue-500/10" : "bg-blue-50", "text-blue-500"],
     ["Pending", pendingReq, <Clock size={20} />, isDarkMode ? "bg-orange-500/10" : "bg-orange-50", "text-orange-500"],
@@ -460,7 +531,7 @@ const handleViewCV = async (request) => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {stats.map(([title, count, icon, bg, color]) => ( <StatsCard key={title} title={title} count={count} icon={icon} bgColor={bg} iconColor={color} />
+            {stats.map(([title, count, icon, bg, color]) => (<StatsCard key={title} title={title} count={count} icon={icon} bgColor={bg} iconColor={color} />
             ))}
           </div>
 
@@ -468,16 +539,16 @@ const handleViewCV = async (request) => {
             <div className={`px-5 sm:px-6 py-5 border-b ${isDarkMode ? "border-[#263149]" : "border-gray-200"}`}>
               <h2 className={`text-xl sm:text-2xl font-bold ${isDarkMode ? "text-white" : "text-[#0D1B2A]"}`}>Requests</h2>
 
-<div className="flex flex-nowrap sm:flex-wrap items-center gap-2 mt-4 overflow-x-auto sm:overflow-visible pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-  {filters.map((item) => (
-    <FilterButton key={item} item={item}
-      active={statusFilter === item}
-      count={filterCounts[item]}
-      isDarkMode={isDarkMode}
-      onClick={() => setStatusFilter(item)}
-    />
-  ))}
-</div>
+              <div className="flex flex-nowrap sm:flex-wrap items-center gap-2 mt-4 overflow-x-auto sm:overflow-visible pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {filters.map((item) => (
+                  <FilterButton key={item} item={item}
+                    active={statusFilter === item}
+                    count={filterCounts[item]}
+                    isDarkMode={isDarkMode}
+                    onClick={() => setStatusFilter(item)}
+                  />
+                ))}
+              </div>
             </div>
 
             <div className={`hidden md:grid grid-cols-[2.5fr_1.3fr_1.2fr_1fr] gap-4 px-6 py-3.5 text-[10px]] font-bold tracking-wider border-b ${isDarkMode ? "bg-[#182238] text-gray-300 border-[#263149]" : "bg-slate-100/80 text-slate-600 border-gray-200"}`}>
@@ -490,13 +561,14 @@ const handleViewCV = async (request) => {
             <div className="divide-y divide-gray-100 dark:divide-transparent max-h-[520px] overflow-x-auto overflow-y-auto p-3 sm:p-4 space-y-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300/60 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700/60">
               {!visibleRequests.length ? (
                 <div className={`py-14 text-center text-sm ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}> No requests found.</div>
-              ) : ( visibleRequests.map((request) => (
-                  <RequestRow key={request._id} request={request}
-                    isDarkMode={isDarkMode}
-                    onStatusChange={requestStatusChange}
-                    onViewCV={handleViewCV}
-                  />
-                ))
+              ) : (visibleRequests.map((request) => (
+                <RequestRow key={request._id} request={request}
+                  isDarkMode={isDarkMode}
+                  onStatusChange={requestStatusChange}
+                  onViewCV={handleViewCV}
+                  onDelete={requestDelete}
+                />
+              ))
               )}
             </div>
 
@@ -519,10 +591,18 @@ const handleViewCV = async (request) => {
       {pendingChange && (
         <ConfirmationModal isDarkMode={isDarkMode} pendingChange={pendingChange}
           isSubmitting={isSubmittingStatus}
-          onCancel={() => { if (!isSubmittingStatus) setPendingChange(null); }}onConfirm={confirmStatusChange}
+          onCancel={() => { if (!isSubmittingStatus) setPendingChange(null); }} onConfirm={confirmStatusChange}
         />
       )}
- {toast && <ToastBanner toast={toast} onClose={() => setToast(null)} />}
+
+      {deleteTarget && (
+        <DeleteConfirmModal isDarkMode={isDarkMode} target={deleteTarget}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
+      )}
+
+      {toast && <ToastBanner toast={toast} onClose={() => setToast(null)} />}
     </div>
   );
 };

@@ -6,6 +6,7 @@ import {
   ChevronRight,
   CalendarDays,
   ChevronLeft,
+  X,
 } from "lucide-react";
 
 import MessageDropdown from "../../components/messagedetail/MessageDropdown";
@@ -46,21 +47,19 @@ const FilterButton = ({ label, active, count, onClick }) => (
     onClick={onClick}
     className={`
       px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center gap-1.5
-      ${
-        active
-          ? "bg-blue-600 text-white shadow-sm shadow-blue-500/20"
-          : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+      ${active
+        ? "bg-blue-600 text-white shadow-sm shadow-blue-500/20"
+        : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
       }
     `}
   >
     {label}
     {label === "Unread" && count > 0 && (
       <span
-        className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-          active
+        className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${active
             ? "bg-white/20 text-white"
             : "bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400"
-        }`}
+          }`}
       >
         {count}
       </span>
@@ -68,10 +67,35 @@ const FilterButton = ({ label, active, count, onClick }) => (
   </button>
 );
 
+//Skeleton loader
+const Skeleton = ({ className = "" }) => (
+  <div className={`${className} rounded-md bg-slate-200 dark:bg-slate-700/60`} />
+);
+
 const LoadingState = () => (
-  <div className="py-16 text-center">
-    <div className="w-10 h-10 border-4 border-blue-100 dark:border-blue-950 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin mx-auto mb-4" />
-    <p className="text-sm text-slate-500 dark:text-slate-400">Loading messages...</p>
+  <div className="space-y-2.5 animate-pulse">
+    {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+      <div
+        key={i}
+        className="flex items-center gap-4 px-5 sm:px-6 py-4 rounded-xl border bg-slate-50/80 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800"
+      >
+        {/* Avatar */}
+        <Skeleton className="w-11 h-11 rounded-xl flex-shrink-0" />
+
+        {/* Name + date, email, message */}
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <Skeleton className="h-3 w-56 max-w-full" />
+          <Skeleton className="h-3.5 w-3/4" />
+        </div>
+
+        {/* Arrow */}
+        <Skeleton className="w-4 h-4 flex-shrink-0" />
+      </div>
+    ))}
   </div>
 );
 
@@ -104,11 +128,10 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
           key={page}
           type="button"
           onClick={() => onPageChange(page)}
-          className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${
-            currentPage === page
+          className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${currentPage === page
               ? "bg-blue-600 text-white"
               : "border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-          }`}
+            }`}
         >
           {page}
         </button>
@@ -134,11 +157,10 @@ const MessageRow = ({ msg, onOpen }) => {
     <div
       key={msg._id}
       onClick={() => onOpen({ ...msg, id: msg._id, name: fullName, time: new Date(msg.createdAt).toLocaleString() })}
-      className={`group relative flex items-center gap-4 px-5 sm:px-6 py-4 rounded-xl border cursor-pointer transition-all duration-150 hover:shadow-sm ${
-        !msg.isRead
+      className={`group relative flex items-center gap-4 px-5 sm:px-6 py-4 rounded-xl border cursor-pointer transition-all duration-150 hover:shadow-sm ${!msg.isRead
           ? "bg-blue-50/70 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-900/40 hover:bg-blue-100/60 dark:hover:bg-blue-950/50"
           : "bg-slate-50/80 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100/70 dark:hover:bg-slate-800/60"
-      }`}
+        }`}
     >
       <div className="flex-shrink-0 relative">
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm ${avatarColor.bg} ${avatarColor.text}`}>
@@ -170,56 +192,64 @@ const MessageRow = ({ msg, onOpen }) => {
 };
 
 const MessagePage = () => {
-   const liveTick = useLiveTick({ resources: ["contact", "notifications"] });
+  const liveTick = useLiveTick({ resources: ["contact", "notifications"] });
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
- const cacheKey = "contact-messages";
-const cachedMessages = messagesCache.get(cacheKey);
+  const cacheKey = "contact-messages";
+  const cachedMessages = messagesCache.get(cacheKey);
 
-const [messages, setMessages] = useState(cachedMessages || []);
-const [loading, setLoading] = useState(!cachedMessages);
+  const [messages, setMessages] = useState(cachedMessages || []);
+  const [loading, setLoading] = useState(!cachedMessages);
   const [filter, setFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
-const fetchMessages = useCallback(async (showLoader = false) => {
-  const cachedData = messagesCache.get(cacheKey);
+  const [deleteTarget, setDeleteTarget] = useState(null); // delete confirm modal ke liye
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [toast, setToast] = useState(null);
 
-  try {
-    if (showLoader && !cachedData) {
-      setLoading(true);
+  const showToast = useCallback((message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+  const fetchMessages = useCallback(async (showLoader = false) => {
+    const cachedData = messagesCache.get(cacheKey);
+
+    try {
+      if (showLoader && !cachedData) {
+        setLoading(true);
+      }
+
+      const res = await axios.get(
+        `${process.env.REACT_APP_API_URL}/api/contact`
+      );
+
+      const freshMessages = res.data.data || [];
+
+      setMessages(freshMessages);
+      messagesCache.set(cacheKey, freshMessages);
+    } catch (error) {
+      console.error("Fetch Messages Error:", error);
+
+      if (!cachedData) {
+        setMessages([]);
+      }
+    } finally {
+      setLoading(false);
     }
-
-    const res = await axios.get(
-      `${process.env.REACT_APP_API_URL}/api/contact`
-    );
-
-    const freshMessages = res.data.data || [];
-
-    setMessages(freshMessages);
-    messagesCache.set(cacheKey, freshMessages);
-  } catch (error) {
-    console.error("Fetch Messages Error:", error);
-
-    if (!cachedData) {
-      setMessages([]);
-    }
-  } finally {
-    setLoading(false);
-  }
-}, []);
+  }, []);
 
   useEffect(() => {
-  const cachedData = messagesCache.get(cacheKey);
+    const cachedData = messagesCache.get(cacheKey);
 
-  if (cachedData) {
-    setMessages(cachedData);
-    setLoading(false);
+    if (cachedData) {
+      setMessages(cachedData);
+      setLoading(false);
 
-    // Background refresh without showing loading
-    fetchMessages(false);
-  } else {
-    fetchMessages(true);
-  }
-}, [fetchMessages, liveTick]);
+      // Background refresh without showing loading
+      fetchMessages(false);
+    } else {
+      fetchMessages(true);
+    }
+  }, [fetchMessages, liveTick]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -235,39 +265,39 @@ const fetchMessages = useCallback(async (showLoader = false) => {
     setIsOpen(false);
   };
 
-const markAsRead = async (id) => {
-  try {
-    await axios.patch(
-      `${process.env.REACT_APP_API_URL}/api/contact/${id}/read`
-    );
+  const markAsRead = async (id) => {
+    try {
+      await axios.patch(
+        `${process.env.REACT_APP_API_URL}/api/contact/${id}/read`
+      );
 
-    await fetchMessages(false);
+      await fetchMessages(false);
 
-    if (selectedMessage) {
-      setSelectedMessage({
-        ...selectedMessage,
-        isRead: true,
-      });
+      if (selectedMessage) {
+        setSelectedMessage({
+          ...selectedMessage,
+          isRead: true,
+        });
+      }
+    } catch (error) {
+      console.error("Mark Read Error:", error);
     }
-  } catch (error) {
-    console.error("Mark Read Error:", error);
-  }
-};
- const deleteMessage = async (id) => {
-  try {
-    await axios.delete(
-      `${process.env.REACT_APP_API_URL}/api/contact/${id}`
-    );
-
-    await fetchMessages(false);
-
-    if (selectedMessage?._id === id) {
-      handleClose();
+  };
+  const deleteMessage = async (id) => {
+    try {
+      setIsDeleting(true);
+      await axios.delete(`http://localhost:5000/api/contact/${id}`);
+      await fetchMessages(true);
+      if (selectedMessage?._id === id) handleClose();
+      setDeleteTarget(null);
+      showToast("Message deleted successfully");
+    } catch (error) {
+      console.error("Delete Error:", error);
+      showToast(error.response?.data?.message || "Unable to delete message", "error");
+    } finally {
+      setIsDeleting(false);
     }
-  } catch (error) {
-    console.error("Delete Error:", error);
-  }
-};
+  };
 
   const filteredMessages = messages.filter(
     (msg) => filter === "All" || (filter === "Unread" && !msg.isRead) || (filter === "Read" && msg.isRead)
@@ -275,6 +305,9 @@ const markAsRead = async (id) => {
   const totalPages = Math.ceil(filteredMessages.length / PAGE_SIZE);
   const visibleMessages = filteredMessages.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const unreadCount = messages.filter((msg) => !msg.isRead).length;
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   return (
     <div className="min-h-full bg-slate-50 dark:bg-slate-950 p-3 sm:p-5 lg:p-6 pb-8 transition-colors duration-200">
@@ -331,13 +364,62 @@ const markAsRead = async (id) => {
         <MessageDetail
           message={selectedMessage}
           onRead={() => selectedMessage && markAsRead(selectedMessage._id)}
-          onDelete={() => selectedMessage && deleteMessage(selectedMessage._id)}
+          onDelete={() => selectedMessage && setDeleteTarget(selectedMessage)}
           onReplySent={(updatedMessage) => {
             setSelectedMessage((prev) => ({ ...prev, ...updatedMessage }));
             setMessages((prev) => prev.map((msg) => (msg._id === updatedMessage._id ? updatedMessage : msg)));
           }}
         />
       </MessageDropdown>
+
+
+      {/* Delete confirmation modal (z-[10000] taake message dropdown ke upar dikhe) */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[10000] bg-black/50 flex items-center justify-center px-4">
+          <div className="bg-white dark:bg-[#11182B] border border-transparent dark:border-[#263149] rounded-2xl shadow-2xl max-w-sm w-full p-6">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Delete message?</h3>
+            <p className="text-sm mt-2 text-slate-500 dark:text-slate-400">
+              Are you sure you want to delete the message from{" "}
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
+                {`${deleteTarget.firstName || ""} ${deleteTarget.lastName || ""}`.trim() || deleteTarget.email || "this user"}
+              </span>
+              ? This action cannot be undone.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeleteTarget(null)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-all ${isDeleting ? "opacity-50 cursor-not-allowed" : "active:scale-95"}`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => deleteMessage(deleteTarget._id)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 shadow-md shadow-red-500/20 transition-all ${isDeleting ? "opacity-60 cursor-not-allowed" : "active:scale-95"}`}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast*/}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-[10000] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg text-white text-sm font-semibold ${toast.type === "success" ? "bg-emerald-600" : "bg-rose-600"
+            }`}
+        >
+          {toast.message}
+          <button type="button" onClick={() => setToast(null)}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
