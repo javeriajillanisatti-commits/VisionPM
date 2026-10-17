@@ -427,11 +427,11 @@ const openHealthScanner = async workspace => {
             <div className={bone("h-11 w-full sm:w-[200px] rounded-lg")} />
           </div>
 
-          <div className="mb-5 min-[600px]:mb-6 flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <div className={bone("h-10 sm:h-11 w-full sm:w-80 rounded-xl")} />
-            <div className="grid grid-cols-2 gap-2 sm:contents">
-              <div className={bone("h-10 sm:h-11 sm:w-48 rounded-xl")} />
-              <div className={bone("h-10 sm:h-11 sm:w-56 sm:ml-auto rounded-xl")} />
+          <div className="mb-5 min-[600px]:mb-6 flex flex-col min-[1000px]:flex-row gap-2 sm:gap-3">
+            <div className={bone("h-10 sm:h-11 w-full min-[1000px]:w-72 xl:w-96 rounded-xl")} />
+            <div className="grid grid-cols-2 gap-2 min-[1000px]:contents">
+              <div className={bone("h-10 sm:h-11 min-[1000px]:w-48 rounded-xl")} />
+              <div className={bone("h-10 sm:h-11 min-[1000px]:w-56 min-[1000px]:ml-auto rounded-xl")} />
             </div>
           </div>
 
@@ -481,9 +481,9 @@ const openHealthScanner = async workspace => {
 
         {/* Filters */}
         <div className={`mb-5 min-[600px]:mb-6 w-full max-w-full`}>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full">
+          <div className="flex flex-col min-[1000px]:flex-row min-[1000px]:items-center gap-2 sm:gap-3 w-full">
             {/* Search: full width */}
-            <div className="relative w-full sm:w-72 md:w-80 xl:w-96 shrink-0">
+            <div className="relative w-full min-[1000px]:w-72 xl:w-96 shrink-0">
               <Search size={17} className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${t.icon}`} />
               <input
                 value={query}
@@ -499,8 +499,8 @@ const openHealthScanner = async workspace => {
             </div>
 
             {/* Mobile: Sort + Health Scanner share one row. Desktop: `contents` keeps the original single row */}
-            <div className="grid grid-cols-2 gap-2 sm:contents">
-              <div ref={sortRef} className="relative w-full sm:w-48 shrink-0">
+            <div className="grid grid-cols-2 gap-2 min-[1000px]:contents">
+              <div ref={sortRef} className="relative w-full min-[1000px]:w-48 shrink-0">
                 <button
                   type="button"
                   onClick={() => setSortOpen(prev => !prev)}
@@ -535,17 +535,17 @@ const openHealthScanner = async workspace => {
               <button
                 type="button"
                 onClick={() => (healthWorkspace ? setHealthWorkspace(null) : filteredWorkspaces.length && openHealthScanner(filteredWorkspaces[0]))}
-                className={`h-10 sm:h-11 w-full sm:w-auto sm:ml-auto px-2 sm:px-4 rounded-xl border text-xs sm:text-sm font-semibold whitespace-nowrap truncate ${
+                className={`h-10 sm:h-11 w-full min-[1000px]:w-auto min-[1000px]:ml-auto px-2 sm:px-4 rounded-xl border text-xs sm:text-sm font-semibold whitespace-nowrap truncate ${
                   healthWorkspace ? "bg-blue-600 border-blue-600 text-white hover:bg-blue-700" : `${t.surface} ${t.ghost}`
                 }`}
               >
-                <span className="sm:hidden">Health Scanner</span>
-                <span className="hidden sm:inline">Project Health Scanner</span>
+                <span className="min-[1000px]:hidden">Health Scanner</span>
+                <span className="hidden min-[1000px]:inline">Project Health Scanner</span>
               </button>
             </div>
 
             {/* Grid / List toggle (desktop only) */}
-            <div className={`hidden sm:flex items-center rounded-xl border p-1 shrink-0 ${t.surface}`}>
+            <div className={`hidden min-[1000px]:flex items-center rounded-xl border p-1 shrink-0 ${t.surface}`}>
               {[["grid", Grid3X3, "Grid"], ["list", List, "List"]].map(([mode, Icon, label]) => (
                 <button
                   key={mode}

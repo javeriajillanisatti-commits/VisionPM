@@ -1,4 +1,4 @@
-import { useLiveTick } from "../../hooks/useLiveRefresh";
+import { useLiveTick, isUserBusy } from "../../hooks/useLiveRefresh";
 import React, { useEffect, useRef, useState } from "react";
 import StatsCard from "../../components/cards/StatsCard";
 import StatusProgressCard from "../../components/admin/StatusProgressCard";
@@ -51,6 +51,22 @@ const normalizeDashboard = data => {
 
 const AdminDashboard = () => {
   const liveTick = useLiveTick();
+  const [pollTick, setPollTick] = useState(0);
+  // fallback: refetch every 15s / on tab focus so charts never go stale
+  useEffect(() => {
+    const run = () => {
+      if (document.hidden || isUserBusy()) return;
+      setPollTick(t => t + 1);
+    };
+    const id = setInterval(run, 15000);
+    document.addEventListener("visibilitychange", run);
+    window.addEventListener("focus", run);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", run);
+      window.removeEventListener("focus", run);
+    };
+  }, []);
   const { activeWorkspace } = useWorkspace();
   const { isDarkMode } = useTheme();
   const [dashboard, setDashboard] = useState(initialDashboard);
@@ -89,8 +105,12 @@ useEffect(() => {
       const normalizedData = normalizeDashboard(data);
 
       if (mounted) {
-        setDashboard(normalizedData);
-        dashboardCache.set(cacheKey, normalizedData);
+        const prev = dashboardCache.get(cacheKey);
+        // only update state when data really changed (avoids chart flicker)
+        if (!prev || JSON.stringify(prev) !== JSON.stringify(normalizedData)) {
+          setDashboard(normalizedData);
+          dashboardCache.set(cacheKey, normalizedData);
+        }
       }
     } catch (error) {
       console.error("Dashboard data loading error:", error);
@@ -111,7 +131,7 @@ useEffect(() => {
   return () => {
     mounted = false;
   };
-}, [workspaceId, liveTick]);
+}, [workspaceId, liveTick, pollTick]);
 
   const totalProjects = dashboard.projects;
   const percentage = key =>

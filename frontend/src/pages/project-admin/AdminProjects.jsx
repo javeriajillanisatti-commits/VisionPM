@@ -431,7 +431,7 @@ useEffect(() => {
             </div>
 
             <div
-              className={`hidden sm:flex items-center rounded-xl border p-1 shrink-0 ${panel}`}
+              className={`hidden min-[1000px]:flex items-center rounded-xl border p-1 shrink-0 ${panel}`}
             >
               {viewButtons.map(([mode, Icon, label]) => (
                 <button

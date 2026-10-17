@@ -1,4 +1,4 @@
-import { useLiveTick } from "../../hooks/useLiveRefresh";
+import { useLiveTick, isUserBusy } from "../../hooks/useLiveRefresh";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, FolderOpen, Search, X } from "lucide-react";
 import { deleteProject, getDashboardProjects } from "../../services/projectService";
@@ -76,13 +76,15 @@ const [loading, setLoading] = useState(!cachedMonitorData);
       t => ids.has(getId(t.project))
     );
 
-    setProjects(list);
-    setTasks(filteredTasks);
+    const prevData = monitorProjectsCache.get(cacheKey);
+    const nextData = { projects: list, tasks: filteredTasks };
 
-    monitorProjectsCache.set(cacheKey, {
-      projects: list,
-      tasks: filteredTasks
-    });
+    // only update state when data really changed (avoids chart flicker)
+    if (!prevData || JSON.stringify(prevData) !== JSON.stringify(nextData)) {
+      setProjects(list);
+      setTasks(filteredTasks);
+      monitorProjectsCache.set(cacheKey, nextData);
+    }
   } catch (err) {
     if (id !== requestId.current) return;
 
@@ -112,6 +114,22 @@ useEffect(() => {
  
   loadData(true); 
 }, [liveTick, loadData]);
+
+// fallback: refetch every 15s / on tab focus so charts never go stale
+useEffect(() => {
+  const run = () => {
+    if (document.hidden || isUserBusy()) return;
+    loadData(true);
+  };
+  const id = setInterval(run, 15000);
+  document.addEventListener("visibilitychange", run);
+  window.addEventListener("focus", run);
+  return () => {
+    clearInterval(id);
+    document.removeEventListener("visibilitychange", run);
+    window.removeEventListener("focus", run);
+  };
+}, [loadData]);
 
   // Calculate project statistics
   const getProjectStats = project => {
