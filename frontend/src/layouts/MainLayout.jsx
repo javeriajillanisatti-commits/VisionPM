@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/sidebar/Sidebar";
 import Topbar from "../components/topbar/Topbar";
@@ -31,7 +31,15 @@ const MainLayout = ({ userRole }) => {
         {/* Main content */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-4">
-            <Outlet />
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center py-24">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
           </div>
         </main>
 

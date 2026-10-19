@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import Navbar from "../components/navbar/Navbar";
 
@@ -9,7 +9,9 @@ const PublicLayout = () => (
 
     {/* Render public page */}
     <main className="w-full">
-      <Outlet />
+      <Suspense fallback={<div className="min-h-[60vh]" />}>
+        <Outlet />
+      </Suspense>
     </main>
   </div>
 );

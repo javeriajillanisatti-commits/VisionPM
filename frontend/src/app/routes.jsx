@@ -1,47 +1,68 @@
+import { lazy, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import PublicLayout from "../layouts/PublicLayout";
 import MainLayout from "../layouts/MainLayout";
 import ProtectedRoute from "./ProtectedRoute";
-
 import LandingPage from "../pages/public/LandingPage";
 import LoginPage from "../pages/public/LoginPage";
-import SignupPage from "../pages/public/SignupPage";
-import ForgotPassword from "../pages/public/ForgotPassword";
-import ResetPasswordPage from "../pages/public/Reset";
-import VerifyEmail from "../pages/VerifyEmail";
 
-import Approvals from "../pages/super-admin/Approvals";
-import MessagePage from "../pages/super-admin/MessagePage";
+const lazyPage = importer => {
+  const Component = lazy(importer);
+  Component.preload = importer;
+  return Component;
+};
 
-import AdminDashboard from "../pages/project-admin/AdminDashboard";
-import ManageUsers from "../pages/project-admin/ManageUser";
-import ManageWorkspaces from "../pages/project-admin/ManageWorkspaces";
-import AdminProjects from "../pages/project-admin/AdminProjects";
-import AdminTasks from "../pages/project-admin/AdminTasks";
-import MonitorProjectsandTasks from "../pages/project-admin/MonitorProjectsandTasks";
-import AdminReport from "../pages/project-admin/AdminReport";
-import AdminAuditTrail from "../pages/project-admin/AdminAuditTrail";
-import Announcements from "../pages/project-admin/Announcements";
-import WorkspaceProjectMap from "../pages/project-admin/WorkspaceProjectMap";
+const SignupPage = lazyPage(() => import("../pages/public/SignupPage"));
+const ForgotPassword = lazyPage(() => import("../pages/public/ForgotPassword"));
+const ResetPasswordPage = lazyPage(() => import("../pages/public/Reset"));
+const VerifyEmail = lazyPage(() => import("../pages/VerifyEmail"));
 
-import Dashboard from "../pages/project-manager/Dashboard";
-import Workspaces from "../pages/project-manager/Workspaces";
-import Projects from "../pages/project-manager/Projects";
-import Tasks from "../pages/project-manager/Tasks";
-import TaskDetails from "../pages/project-manager/TaskDetails";
-import Members from "../pages/project-manager/Members";
-import MonitorTaskProgress from "../pages/project-manager/MonitorTaskProgress";
-import Report from "../pages/project-manager/Report";
+const Approvals = lazyPage(() => import("../pages/super-admin/Approvals"));
+const MessagePage = lazyPage(() => import("../pages/super-admin/MessagePage"));
 
-import MemberWorkspace from "../pages/team-member/TM-Workspace";
-import TMProjects from "../pages/team-member/TMProjects";
-import TMTasks from "../pages/team-member/TM-Tasks";
-import TMTaskDetail from "../pages/team-member/TM-TaskDetail";
-import MemberReport from "../pages/team-member/TM-Report";
-import TMWorkPlanner from "../pages/team-member/TM-WorkPlanner";
-import TMContribution from "../pages/team-member/TM-Contribution";
+const AdminDashboard = lazyPage(() => import("../pages/project-admin/AdminDashboard"));
+const ManageUsers = lazyPage(() => import("../pages/project-admin/ManageUser"));
+const ManageWorkspaces = lazyPage(() => import("../pages/project-admin/ManageWorkspaces"));
+const AdminProjects = lazyPage(() => import("../pages/project-admin/AdminProjects"));
+const AdminTasks = lazyPage(() => import("../pages/project-admin/AdminTasks"));
+const MonitorProjectsandTasks = lazyPage(() => import("../pages/project-admin/MonitorProjectsandTasks"));
+const AdminReport = lazyPage(() => import("../pages/project-admin/AdminReport"));
+const AdminAuditTrail = lazyPage(() => import("../pages/project-admin/AdminAuditTrail"));
+const Announcements = lazyPage(() => import("../pages/project-admin/Announcements"));
+const WorkspaceProjectMap = lazyPage(() => import("../pages/project-admin/WorkspaceProjectMap"));
 
-const AppRoutes = () => (
+const Dashboard = lazyPage(() => import("../pages/project-manager/Dashboard"));
+const Workspaces = lazyPage(() => import("../pages/project-manager/Workspaces"));
+const Projects = lazyPage(() => import("../pages/project-manager/Projects"));
+const Tasks = lazyPage(() => import("../pages/project-manager/Tasks"));
+const TaskDetails = lazyPage(() => import("../pages/project-manager/TaskDetails"));
+const Members = lazyPage(() => import("../pages/project-manager/Members"));
+const MonitorTaskProgress = lazyPage(() => import("../pages/project-manager/MonitorTaskProgress"));
+const Report = lazyPage(() => import("../pages/project-manager/Report"));
+
+const MemberWorkspace = lazyPage(() => import("../pages/team-member/TM-Workspace"));
+const TMProjects = lazyPage(() => import("../pages/team-member/TMProjects"));
+const TMTasks = lazyPage(() => import("../pages/team-member/TM-Tasks"));
+const TMTaskDetail = lazyPage(() => import("../pages/team-member/TM-TaskDetail"));
+const MemberReport = lazyPage(() => import("../pages/team-member/TM-Report"));
+const TMWorkPlanner = lazyPage(() => import("../pages/team-member/TM-WorkPlanner"));
+const TMContribution = lazyPage(() => import("../pages/team-member/TM-Contribution"));
+
+
+const lazyPages = [SignupPage, ForgotPassword, ResetPasswordPage, VerifyEmail, Approvals, MessagePage, AdminDashboard, ManageUsers, ManageWorkspaces, AdminProjects, AdminTasks, MonitorProjectsandTasks, AdminReport, AdminAuditTrail, Announcements, WorkspaceProjectMap, Dashboard, Workspaces, Projects, Tasks, TaskDetails, Members, MonitorTaskProgress, Report, MemberWorkspace, TMProjects, TMTasks, TMTaskDetail, MemberReport, TMWorkPlanner, TMContribution];
+
+const AppRoutes = () => {
+  useEffect(() => {
+    const preloadAll = () => lazyPages.forEach(page => page.preload().catch(() => {}));
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(preloadAll, { timeout: 4000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = setTimeout(preloadAll, 2000);
+    return () => clearTimeout(id);
+  }, []);
+
+  return (
   <Routes>
     {/* Public pages */}
     <Route element={<PublicLayout />}>
@@ -110,6 +131,7 @@ const AppRoutes = () => (
 
     <Route path="*" element={<Navigate to="/login" replace />} />
   </Routes>
-);
+  );
+};
 
 export default AppRoutes;

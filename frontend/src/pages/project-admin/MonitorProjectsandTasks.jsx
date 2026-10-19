@@ -115,13 +115,13 @@ useEffect(() => {
   loadData(true); 
 }, [liveTick, loadData]);
 
-// fallback: refetch every 15s / on tab focus so charts never go stale
+// fallback: refetch every 60s / on tab focus so charts never go stale
 useEffect(() => {
   const run = () => {
     if (document.hidden || isUserBusy()) return;
     loadData(true);
   };
-  const id = setInterval(run, 15000);
+  const id = setInterval(run, 60000);
   document.addEventListener("visibilitychange", run);
   window.addEventListener("focus", run);
   return () => {

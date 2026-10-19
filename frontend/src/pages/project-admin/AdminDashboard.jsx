@@ -52,13 +52,13 @@ const normalizeDashboard = data => {
 const AdminDashboard = () => {
   const liveTick = useLiveTick();
   const [pollTick, setPollTick] = useState(0);
-  // fallback: refetch every 15s / on tab focus so charts never go stale
+
   useEffect(() => {
     const run = () => {
       if (document.hidden || isUserBusy()) return;
       setPollTick(t => t + 1);
     };
-    const id = setInterval(run, 15000);
+    const id = setInterval(run, 60000);
     document.addEventListener("visibilitychange", run);
     window.addEventListener("focus", run);
     return () => {
@@ -106,7 +106,7 @@ useEffect(() => {
 
       if (mounted) {
         const prev = dashboardCache.get(cacheKey);
-        // only update state when data really changed (avoids chart flicker)
+        
         if (!prev || JSON.stringify(prev) !== JSON.stringify(normalizedData)) {
           setDashboard(normalizedData);
           dashboardCache.set(cacheKey, normalizedData);
