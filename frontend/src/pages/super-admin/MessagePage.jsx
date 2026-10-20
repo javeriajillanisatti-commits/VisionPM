@@ -380,9 +380,7 @@ const MessagePage = () => {
             <h3 className="text-base font-bold text-slate-900 dark:text-white">Delete message?</h3>
             <p className="text-sm mt-2 text-slate-500 dark:text-slate-400">
               Are you sure you want to delete the message from{" "}
-              <span className="font-semibold text-slate-700 dark:text-slate-200">
-                {`${deleteTarget.firstName || ""} ${deleteTarget.lastName || ""}`.trim() || deleteTarget.email || "this user"}
-              </span>
+              {`${deleteTarget.firstName || ""} ${deleteTarget.lastName || ""}`.trim() || deleteTarget.email || "this user"}
               ? This action cannot be undone.
             </p>
 

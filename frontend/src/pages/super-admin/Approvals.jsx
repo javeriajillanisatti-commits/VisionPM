@@ -217,14 +217,22 @@ const RequestRow = ({ request, isDarkMode, onStatusChange, onViewCV, onDelete })
         <button type="button" onClick={() => onViewCV(request)}
           className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold hover:from-blue-700 hover:to-indigo-700 active:scale-95 transition-all shadow-xs shadow-blue-500/20" >View Details</button>
 
-        {isFinal && (
-          <button type="button" title="Remove from list" onClick={() => onDelete(request)}
-            className={`p-2 rounded-lg border transition-all active:scale-95 ${isDarkMode
+        <button
+          type="button"
+          title={isFinal ? "Remove from list" : "Pending requests cannot be removed"}
+          aria-label={isFinal ? "Remove from list" : "Pending requests cannot be removed"}
+          disabled={!isFinal}
+          onClick={() => onDelete(request)}
+          className={`p-2 rounded-lg border transition-all ${isFinal
+            ? `active:scale-95 ${isDarkMode
               ? "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"
-              : "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100"}`}>
-            <Trash2 size={14} />
-          </button>
-        )}
+              : "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100"}`
+            : isDarkMode
+              ? "bg-white/5 text-gray-600 border-white/10 cursor-not-allowed opacity-50"
+              : "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed opacity-60"}`}
+        >
+          <Trash2 size={14} />
+        </button>
       </div>
     </div>
   );
@@ -286,7 +294,7 @@ const DeleteConfirmModal = ({ isDarkMode, target, onCancel, onConfirm }) => (
     <div className={`rounded-2xl shadow-2xl max-w-sm w-full p-6 ${isDarkMode ? "bg-[#11182B] border border-[#263149]" : "bg-white"}`}>
       <h3 className={`text-base font-bold ${isDarkMode ? "text-white" : "text-[#0D1B2A]"}`}>Remove from list</h3>
       <p className={`text-sm mt-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
-        Are you sure you want to remove <b>{target.userName}</b> from this list?
+        Are you sure you want to remove {target.userName} from this list?
       </p>
 
       <div className="flex items-center justify-end gap-3 mt-6">
@@ -333,6 +341,7 @@ const Approvals = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [hiddenIds, setHiddenIds] = useState(loadHiddenIds);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const latestFetchId = useRef(0);
   const showToast = useCallback((message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -341,6 +350,7 @@ const Approvals = () => {
   const fetchRequests = useCallback(
     async (showLoader = false) => {
       const cachedData = approvalsCache.get(cacheKey);
+      const fetchId = ++latestFetchId.current;
 
       if (showLoader && !cachedData) {
         setInitialLoading(true);
@@ -348,26 +358,31 @@ const Approvals = () => {
 
       try {
         const response = await approvalService.getPendingRequests();
-        const freshRequests = response.users || [];
+        if (!Array.isArray(response.users)) {
+          throw new Error("Invalid approval requests response");
+        }
+        if (fetchId !== latestFetchId.current) return;
 
+        const freshRequests = response.users;
         setRequests(freshRequests);
         approvalsCache.set(cacheKey, freshRequests);
       } catch (error) {
+        if (fetchId !== latestFetchId.current) return;
+
         console.error(
           " Fetch Requests Error:",
           error.response?.data || error.message || error
         );
-
-        if (!cachedData) {
-          showToast(
-            error.response?.data?.message ||
-            error.message ||
-            "Unable to load requests",
-            "error"
-          );
-        }
+        showToast(
+          error.response?.data?.message ||
+          error.message ||
+          "Unable to load requests",
+          "error"
+        );
       } finally {
-        setInitialLoading(false);
+        if (fetchId === latestFetchId.current) {
+          setInitialLoading(false);
+        }
       }
     },
     [showToast]
@@ -391,6 +406,28 @@ const Approvals = () => {
     fetchRequests(false);
   }, [liveTick, fetchRequests]);
 
+  useEffect(() => {
+    const refreshWhenActive = () => {
+      if (document.visibilityState === "visible") {
+        fetchRequests(false);
+      }
+    };
+
+    window.addEventListener("focus", refreshWhenActive);
+    window.addEventListener("online", refreshWhenActive);
+    document.addEventListener("visibilitychange", refreshWhenActive);
+
+    return () => {
+      window.removeEventListener("focus", refreshWhenActive);
+      window.removeEventListener("online", refreshWhenActive);
+      document.removeEventListener("visibilitychange", refreshWhenActive);
+    };
+  }, [fetchRequests]);
+
+  useEffect(() => () => {
+    latestFetchId.current += 1;
+  }, []);
+
   useEffect(() => setCurrentPage(1), [statusFilter]);
   const requestStatusChange = (request, newStatus) => {
     if (newStatus === request.accountStatus) return;
@@ -407,7 +444,7 @@ const Approvals = () => {
   };
 
   const requestDelete = (request) => {
-    if (request.accountStatus === "Pending") return;
+    if (request.accountStatus !== "Approved" && request.accountStatus !== "Rejected") return;
     setDeleteTarget({
       userId: String(request._id),
       userName: request.name || request.fullName || "this user",
